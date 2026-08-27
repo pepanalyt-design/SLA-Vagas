@@ -1,0 +1,2377 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SLA Recrutamento - Analytics & Operação</title>
+    
+    <!-- Bibliotecas -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- AWS SDK S3 para Uploads -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aws-sdk/2.1393.0/aws-sdk.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Poppins:wght@400;600;800&family=Quicksand:wght@400;600;800&family=Manrope:wght@400;600;800&family=Nunito:wght@400;700;800&family=Space+Grotesk:wght@400;600;700&family=Lora:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap');</style>
+
+    <style>
+        /* Variaveis Globais e Temas */
+        :root {
+            --font-family: 'Inter', system-ui, sans-serif;
+            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+            --st-aberta: #0284c7; --st-fechada: #059669; --st-standby: #d97706; 
+            --st-admissao: #7c3aed; --st-cancelada: #dc2626; --st-desistencia: #e11d48;
+            
+            --bg-base: #f8fafc; --surface-color: #ffffff; --card-bg: rgba(255, 255, 255, 0.95);
+            --text-main: #0f172a; --text-muted: #475569; --border-color: rgba(148, 163, 184, 0.3);
+            --primary: #0ea5e9; --primary-hover: #0284c7; --accent: #10b981;
+            --shadow-soft: 0 10px 40px -10px rgba(0,0,0,0.05); --shadow-hard: 0 20px 25px -5px rgba(0,0,0,0.1);
+            --bg-pattern: radial-gradient(circle at 10px 10px, rgba(14, 165, 233, 0.03) 2px, transparent 0);
+        }
+        
+        [data-theme="dark"] { --bg-base: #10182a; --surface-color: #1b2540; --card-bg: rgba(27, 37, 64, 0.95); --text-main: #f1f5fb; --text-muted: #a9b6cf; --border-color: rgba(148, 163, 184, 0.18); --primary: #5fc9e8; --primary-hover: #38b3d9; --accent: #3ddc97; }
+        [data-theme="sweet-sugar"] { --bg-base: #fff8fb; --surface-color: #ffffff; --card-bg: rgba(255, 255, 255, 0.95); --text-main: #4a2e3d; --text-muted: #8a6b78; --border-color: rgba(242, 166, 198, 0.35); --primary: #f2a6c6; --primary-hover: #ea82ae; --accent: #a7e0da; }
+        [data-theme="sweet-coffe"] { --bg-base: #3a332e; --surface-color: #48403a; --card-bg: rgba(72, 64, 58, 0.95); --text-main: #f7efe6; --text-muted: #cbb9a8; --border-color: rgba(201, 162, 126, 0.22); --primary: #c9a27e; --primary-hover: #b98c62; --accent: #e4c9a8; }
+        [data-theme="love-pink"] { --bg-base: #fdf2f6; --surface-color: #ffffff; --card-bg: rgba(255, 255, 255, 0.95); --text-main: #4a1b30; --text-muted: #7a4459; --border-color: rgba(232, 98, 143, 0.3); --primary: #e8628f; --primary-hover: #d43f70; --accent: #f7cadb; }
+        [data-theme="punk-pink"] { --bg-base: #1a1220; --surface-color: #281c31; --card-bg: rgba(40, 28, 49, 0.95); --text-main: #fbeafc; --text-muted: #cba9d6; --border-color: rgba(177, 74, 255, 0.3); --primary: #ff2e88; --primary-hover: #e0106b; --accent: #b14aff; }
+        [data-theme="viking-tea"] { --bg-base: #f4efe6; --surface-color: #fffdfa; --card-bg: rgba(255, 253, 250, 0.95); --text-main: #2f2a22; --text-muted: #6b5f4f; --border-color: rgba(138, 90, 52, 0.25); --primary: #8a5a34; --primary-hover: #6f4527; --accent: #3f6b62; }
+        [data-theme="viking-coffe"] { --bg-base: #201a15; --surface-color: #2c241c; --card-bg: rgba(44, 36, 28, 0.95); --text-main: #f3e9db; --text-muted: #c2ad94; --border-color: rgba(184, 135, 90, 0.25); --primary: #b8875a; --primary-hover: #a06f43; --accent: #4a7a72; }
+        [data-theme="lonely-winter"] { --bg-base: #f4f8fc; --surface-color: #ffffff; --card-bg: rgba(255,255,255,0.95); --text-main: #223148; --text-muted: #5c7290; --border-color: rgba(111, 168, 216, 0.35); --primary: #6fa8d8; --primary-hover: #4a8bc2; --accent: #c9d6f0; }
+        [data-theme="beautiful-fall"] { --bg-base: #fdf6ec; --surface-color: #fffaf2; --card-bg: rgba(255,250,242,0.95); --text-main: #4a2f1c; --text-muted: #8a6a4c; --border-color: rgba(201, 106, 53, 0.3); --primary: #c96a35; --primary-hover: #a85427; --accent: #d9a441; }
+        [data-theme="magma-gamer"] { --bg-base: #16110f; --surface-color: #221a17; --card-bg: rgba(34,26,23,0.95); --text-main: #fdf1ea; --text-muted: #c9a999; --border-color: rgba(255, 90, 54, 0.28); --primary: #ff5a36; --primary-hover: #e5401f; --accent: #ffb86b; }
+        [data-theme="eclipse"] { --bg-base: #0a1015; --surface-color: #16232a; --card-bg: rgba(22,35,42,0.95); --text-main: #d9f3f0; --text-muted: #8fb3ae; --border-color: rgba(79, 209, 197, 0.22); --primary: #4fd1c5; --primary-hover: #34b3a8; --accent: #8fe3da; }
+        [data-theme="tarot-light"] { --bg-base: #f7f3ea; --surface-color: #fffdf7; --card-bg: rgba(255,253,247,0.95); --text-main: #2e2416; --text-muted: #746c5a; --border-color: rgba(156, 107, 47, 0.3); --primary: #9c6b2f; --primary-hover: #7d5423; --accent: #c9a227; }
+        [data-theme="tarot-dark"] { --bg-base: #170f22; --surface-color: #241834; --card-bg: rgba(36,24,52,0.95); --text-main: #f2e6d2; --text-muted: #ad98bd; --border-color: rgba(212, 175, 55, 0.25); --primary: #d4af37; --primary-hover: #b8962e; --accent: #6b4f8a; }
+        [data-theme="forest-light"] { --bg-base: #eef7eb; --surface-color: #ffffff; --card-bg: rgba(255,255,255,0.95); --text-main: #1a3c1c; --text-muted: #4a6b4c; --border-color: rgba(76, 175, 80, 0.3); --primary: #2e7d32; --primary-hover: #1b5e20; --accent: #81c784; }
+        [data-theme="forest-dark"] { --bg-base: #111411; --surface-color: #1a1f1a; --card-bg: rgba(26, 31, 26, 0.95); --text-main: #e2e8e3; --text-muted: #8b998d; --border-color: rgba(76, 175, 80, 0.15); --primary: #4caf50; --primary-hover: #388e3c; --accent: #81c784; }
+
+        body { background-color: var(--bg-base); background-image: var(--bg-pattern); background-size: 50px 50px; color: var(--text-main); min-height: 100vh; overflow-x: hidden; transition: filter 0.5s, background-color 0.4s, color 0.4s, font-family 0.4s; }
+        body.eye-comfort { filter: sepia(0.4) hue-rotate(-15deg) brightness(0.9); }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: var(--font-family); }
+
+        /* Botoes e Layout Base */
+        .btn { padding: 10px 20px; border-radius: 30px; font-weight: 600; font-size: 0.9rem; border: none; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-hover)); color: white; }
+        .btn-secondary { background: var(--surface-color); color: var(--text-main); border: 1px solid var(--border-color); }
+        .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+        .btn-warning { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 5000; display: flex; align-items: center; justify-content: center; background: url('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat; }
+        #login-overlay::before { content: ''; position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(12px); }
+        .login-card { position: relative; z-index: 10; background: var(--surface-color); padding: 50px 40px; border-radius: 24px; width: 90%; max-width: 420px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+
+        header { display: flex; justify-content: space-between; align-items: center; padding: 15px 40px; background: var(--surface-color); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .header-logo-bg { background: #ffffff !important; padding: 8px 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0 !important; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
+        .header-logo-bg img { height: 45px; object-fit: contain; }
+        .header-title { font-size: 1.5rem; font-weight: 800; background: -webkit-linear-gradient(45deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-left: 20px; }
+        
+        .top-controls { display: flex; align-items: center; gap: 15px; }
+        .btn-top { background: var(--surface-color); color: var(--text-main); border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 30px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 8px; }
+        .btn-top:hover { border-color: var(--primary); color: var(--primary); }
+
+        .notification-bell { position: relative; cursor: pointer; color: var(--text-muted); font-size: 1.4rem; padding: 10px; border-radius: 50%; transition: 0.3s; }
+        .notification-bell:hover { background: rgba(0,0,0,0.05); color: var(--primary); }
+        .notification-badge { position: absolute; top: 2px; right: 2px; background: var(--danger); color: white; font-size: 0.65rem; font-weight:bold; padding: 2px 6px; border-radius: 10px; border: 2px solid var(--surface-color); }
+        .notif-dropdown { position: absolute; top: 50px; right: -50px; width: 350px; background: var(--surface-color); border-radius: 16px; box-shadow: var(--shadow-hard); border: 1px solid var(--border-color); display: none; flex-direction: column; z-index: 200; overflow: hidden; }
+        .notif-dropdown.active { display: flex; }
+        .notif-header { padding: 15px; border-bottom: 1px solid var(--border-color); font-weight: bold; font-size: 0.9rem; display: flex; justify-content: space-between; color: var(--text-main);}
+        .notif-list { max-height: 350px; overflow-y: auto; }
+        .notif-item { padding: 15px; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; cursor: pointer; transition: 0.2s; color: var(--text-main); display:flex; gap:10px; align-items:center; }
+        .notif-item:hover { background: rgba(14, 165, 233, 0.05); }
+        .notif-item.unread { font-weight: bold; background: rgba(14, 165, 233, 0.03); }
+
+        .user-profile { display: flex; align-items: center; gap: 15px; padding: 6px 15px; border-radius: 40px; cursor: pointer; border: 1px solid var(--border-color); transition: 0.3s; background: var(--bg-base); }
+        .user-profile:hover { border-color: var(--primary); box-shadow: var(--shadow-soft); }
+        .user-info { display: flex; flex-direction: column; text-align: right; }
+        .user-name { font-weight: 700; font-size: 0.9rem; color: var(--text-main); }
+        .user-role { font-size: 0.75rem; color: var(--text-muted); }
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary); background: var(--surface-color); }
+
+        /* KPIs e Tabela Principal */
+        .kpi-wrapper { padding: 30px 40px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 25px; }
+        .kpi-card { background: var(--card-bg); padding: 25px; border-radius: 20px; border: 1px solid var(--border-color); box-shadow: var(--shadow-soft); display: flex; flex-direction: column; gap: 10px; position: relative; overflow: hidden; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--primary); }
+        .kpi-title { font-size: 1rem; color: var(--text-muted); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+        .kpi-value { font-size: 2.2rem; font-weight: 800; color: var(--text-main); }
+        
+        .main-table-wrapper { padding: 0 40px 40px 40px; height: calc(100vh - 280px); display: flex; flex-direction: column; }
+        .table-container { width: 100%; flex-grow: 1; background: var(--card-bg); border-radius: 20px; box-shadow: var(--shadow-soft); border: 1px solid var(--border-color); overflow: auto; -webkit-overflow-scrolling: touch; position: relative; }
+        table { width: 100%; border-collapse: collapse; text-align: left; white-space: nowrap; }
+        thead { background: var(--surface-color); position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        th { padding: 12px 15px; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); border-bottom: 1px solid var(--border-color); position: relative; }
+        td { padding: 15px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color); font-weight: 500; color: var(--text-main); }
+        
+        .th-title-flex { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .excel-filter-icon { cursor: pointer; color: var(--text-muted); padding: 5px; border-radius: 4px; transition: 0.2s; }
+        .sort-icon { cursor: pointer; color: var(--text-muted); padding: 5px; border-radius: 4px; transition: 0.2s; font-size: 0.85rem; }
+        .sort-icon:hover { background: rgba(0,0,0,0.05); color: var(--primary); }
+        .sort-icon.active { color: var(--primary); }
+        .th-label-sortable { cursor: pointer; user-select: none; }
+        .th-label-sortable:hover { text-decoration: underline; }
+        .excel-filter-icon:hover, .excel-filter-icon.active { background: var(--primary); color: white; }
+        
+        .excel-filter-modal { position: absolute; top: 100%; left: 0; background: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3) !important; z-index: 50; width: 230px; padding: 12px; display: none; }
+        .excel-filter-modal.open { display: block; }
+        .excel-filter-search { width: 100%; padding: 8px; border: 1px solid #cbd5e1 !important; border-radius: 6px; margin-bottom: 10px; background: #f8fafc !important; color: #000000 !important; outline: none; font-size:0.85rem;}
+        .excel-filter-list { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .excel-filter-label { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #000000 !important; cursor: pointer; font-weight:normal;}
+        .excel-filter-label input { accent-color: var(--primary); }
+
+        .status-badge { padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid currentColor; background: var(--surface-color); }
+        .st-aberta { color: var(--st-aberta); } .st-fechada { color: var(--st-fechada); } .st-standby { color: var(--st-standby); } .st-admissao { color: var(--st-admissao); } .st-cancelada { color: var(--st-cancelada); } .st-desistencia { color: var(--st-desistencia); }
+
+        /* Drawer Painel Lateral */
+        .drawer-panel { position: fixed; top: 0; right: -450px; width: 420px; max-width: 100vw; height: 100vh; background: var(--surface-color); box-shadow: -10px 0 30px rgba(0,0,0,0.2); border-left: 1px solid var(--border-color); z-index: 2500; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; }
+        .drawer-panel.open { right: 0; }
+        .drawer-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary); padding: 20px; color: var(--text-main); }
+        .drawer-content { padding: 20px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 15px; }
+        .close-drawer { background: none; border: none; color: var(--danger); font-size: 1.5rem; cursor: pointer; transition: 0.2s; }
+        .close-drawer:hover { transform: scale(1.1) rotate(90deg); }
+
+        /* Chat UI */
+        .chat-msg { margin-bottom: 15px; padding: 12px; border-radius: 16px; background: var(--bg-base); border: 1px solid var(--border-color); font-size: 0.9rem; position: relative; color: var(--text-main); }
+        .chat-msg.my-msg { background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(14, 165, 233, 0.05)); border-color: var(--primary); align-self: flex-end; border-bottom-right-radius: 4px; }
+        .chat-msg:not(.my-msg) { border-bottom-left-radius: 4px; }
+        .chat-author { font-weight: 700; margin-bottom: 5px; color: var(--primary); font-size: 0.8rem; display:flex; justify-content:space-between; }
+        .chat-date { font-size: 0.7rem; color: var(--text-muted); font-weight: normal; }
+        .mention { color: var(--accent); font-weight: bold; cursor: pointer; background: rgba(16, 185, 129, 0.1); padding: 2px 6px; border-radius: 8px; }
+        
+        .chat-reactions { display: flex; gap: 5px; margin-top: 8px; flex-wrap: wrap; }
+        .reaction-btn { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 3px 8px; font-size: 0.75rem; cursor: pointer; color: var(--text-main); transition: 0.2s; display: flex; align-items: center; gap: 4px;}
+        .reaction-btn:hover { border-color: var(--primary); transform: scale(1.05); }
+
+        .chat-input-area { padding: 20px; border-top: 1px solid var(--border-color); display: flex; gap: 10px; position: relative; background: var(--surface-color); }
+        .chat-input-area input { flex-grow: 1; padding: 12px 20px; border-radius: 30px; border: 1px solid var(--border-color); background: var(--bg-base); color: var(--text-main); outline: none; font-size: 0.9rem; transition: 0.3s; min-width: 0; }
+        .chat-input-area input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(14,165,233,0.1); }
+        .chat-input-area button { background: linear-gradient(135deg, var(--primary), var(--primary-hover)); color: white; border: none; border-radius: 50%; min-width: 45px; height: 45px; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 10px rgba(14,165,233,0.3); }
+
+        .mentions-dropdown { position: absolute; bottom: 70px; left: 20px; width: 250px; background: var(--surface-color); border-radius: 12px; box-shadow: var(--shadow-hard); border: 1px solid var(--border-color); display: none; flex-direction: column; z-index: 10; max-height: 150px; overflow-y: auto; }
+        .mentions-dropdown.active { display: flex; }
+        .mention-item { padding: 10px 15px; font-size: 0.85rem; cursor: pointer; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
+        .mention-item:hover { background: rgba(14, 165, 233, 0.1); color: var(--primary); font-weight: bold; }
+
+        /* Modais, Forms e Gráficos */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 3000; transition: 0.3s; opacity: 0; }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal-card { background: var(--surface-color); padding: 30px; border-radius: 24px; width: 95%; max-width: 550px; box-shadow: var(--shadow-hard); max-height: 90vh; overflow-y: auto; transform: translateY(20px); transition: 0.3s; border: 1px solid var(--border-color); }
+        .modal-overlay.active .modal-card { transform: translateY(0); }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: 700; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-muted); }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px 15px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-base); color: var(--text-main); outline: none; font-size: 0.95rem; transition: 0.3s; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--primary); }
+        
+        .file-upload-wrapper { position: relative; width: 100%; height: 60px; border: 2px dashed var(--border-color); border-radius: 16px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.02); color: var(--text-muted); font-weight: 600; cursor: pointer; transition: 0.3s; }
+        .file-upload-wrapper:hover { border-color: var(--primary); color: var(--primary); background: rgba(14, 165, 233, 0.05); }
+        .file-upload-wrapper input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+        #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--text-main); color: var(--bg-base); padding: 15px 30px; border-radius: 30px; font-weight: 700; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); opacity: 0; z-index: 6000; box-shadow: var(--shadow-hard); display: flex; align-items: center; gap: 10px; }
+        #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        #toast.error { background: var(--danger); color: white; }
+
+        @keyframes highlightRow { 0% { background-color: rgba(14, 165, 233, 0.3); } 100% { background-color: transparent; } }
+        
+        /* Baralho / Deck de Cards */
+        .deck-card { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 16px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05), 0 12px 0 -6px var(--surface-color), 0 12px 15px -8px rgba(0,0,0,0.08), 0 22px 0 -12px var(--surface-color), 0 22px 20px -16px rgba(0,0,0,0.06); transition: transform 0.3s, box-shadow 0.3s; display: flex; flex-direction: column; min-height: 480px; position: relative; }
+        .deck-card::before, .deck-card::after { content: ''; position: absolute; left: 6px; right: 6px; border-radius: 16px; background: var(--surface-color); border: 1px solid var(--border-color); z-index: -1; }
+        .deck-card::before { top: 6px; bottom: -6px; opacity: 0.85; }
+        .deck-card::after { top: 12px; bottom: -12px; left: 12px; right: 12px; opacity: 0.6; }
+        .deck-card:hover { transform: translateY(-6px) rotate(-0.5deg); box-shadow: 0 10px 25px rgba(0,0,0,0.12), 0 12px 0 -6px var(--surface-color), 0 18px 20px -10px rgba(0,0,0,0.1), 0 22px 0 -12px var(--surface-color), 0 30px 25px -18px rgba(0,0,0,0.08); border-color: var(--primary); }
+        .deck-card-img { width: 100%; height: 230px; object-fit: cover; background: var(--bg-base); }
+        .deck-card-body { padding: 20px; flex-grow: 1; display: flex; flex-direction: column; }
+        .deck-card-dept { font-size: 0.65rem; font-weight: 800; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+        .deck-card-name { font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px; line-height: 1.2; }
+        .deck-card-role { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; }
+        .deck-card-status-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+        .deck-card-status-item { display: flex; justify-content: space-between; font-size: 0.85rem; align-items: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 4px;}
+        .deck-card-status-item span { color: var(--text-muted); }
+        .deck-card-status-item b { color: var(--text-main); font-weight: 800; font-size: 0.9rem; }
+        .deck-card-slas { display: flex; gap: 8px; margin-top: auto; justify-content: space-between; }
+
+        /* Card da Vaga - visual estilo "aprovação" */
+        .vc-banner { margin: -30px -30px 20px -30px; padding: 22px 30px 18px 30px; color: #fff; position: relative; overflow: hidden; border-radius: 24px 24px 0 0; }
+        .vc-banner-aberta { background: linear-gradient(135deg, var(--st-aberta), color-mix(in srgb, var(--st-aberta) 70%, black)); }
+        .vc-banner-standby { background: linear-gradient(135deg, var(--st-standby), color-mix(in srgb, var(--st-standby) 70%, black)); }
+        .vc-banner-admissao { background: linear-gradient(135deg, var(--st-admissao), color-mix(in srgb, var(--st-admissao) 70%, black)); }
+        .vc-banner-fechada { background: linear-gradient(135deg, var(--st-fechada), color-mix(in srgb, var(--st-fechada) 70%, black)); }
+        .vc-banner-cancelada { background: linear-gradient(135deg, var(--st-cancelada), color-mix(in srgb, var(--st-cancelada) 70%, black)); }
+        .vc-banner-desistencia { background: linear-gradient(135deg, var(--st-desistencia), color-mix(in srgb, var(--st-desistencia) 70%, black)); }
+        .vc-banner-top { display:flex; justify-content:space-between; align-items:flex-start; }
+        .vc-banner-badge { background: rgba(255,255,255,0.25); backdrop-filter: blur(4px); padding: 5px 14px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+        .vc-banner-cargo { font-size: 1.5rem; font-weight: 800; margin-top: 10px; line-height: 1.15; }
+        .vc-banner-filial { font-size: 0.9rem; opacity: 0.9; margin-top: 2px; }
+        .vc-close-x { background: rgba(255,255,255,0.2); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; transition: 0.2s; flex-shrink: 0; }
+        .vc-close-x:hover { background: rgba(255,255,255,0.35); transform: rotate(90deg); }
+        .vc-sla-ring-wrap { display:flex; align-items:center; gap:14px; margin-top:16px; }
+        .vc-sla-ring { position: relative; width: 56px; height: 56px; flex-shrink: 0; }
+        .vc-sla-ring svg { transform: rotate(-90deg); width:56px; height:56px; }
+        .vc-sla-ring-bg { fill:none; stroke: rgba(255,255,255,0.25); stroke-width:5; }
+        .vc-sla-ring-fg { fill:none; stroke:#fff; stroke-width:5; stroke-linecap:round; transition: stroke-dashoffset 0.4s; }
+        .vc-sla-ring-text { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:0.7rem; font-weight:800; }
+        .vc-sla-label { font-size: 0.78rem; opacity: 0.9; line-height: 1.4; }
+        .vc-sla-label b { font-size: 1rem; display:block; }
+        .vc-chips { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+        .vc-chip { background: var(--bg-base); border: 1px solid var(--border-color); border-radius: 12px; padding: 10px 12px; }
+        .vc-chip-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; display:flex; align-items:center; gap:5px; }
+        .vc-chip-value { font-weight: 600; color: var(--text-main); margin-top: 3px; font-size: 0.9rem; }
+        .vc-chip-full { grid-column: 1 / -1; }
+        .vc-candidato-box { background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02)); border: 1px solid rgba(16,185,129,0.25); border-radius: 14px; padding: 14px; margin-bottom: 18px; display:flex; align-items:center; gap: 12px; }
+        .vc-candidato-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--success); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1rem; flex-shrink:0; }
+        .deck-sla-badge { background: rgba(0,0,0,0.03); padding: 8px 10px; border-radius: 12px; font-size: 0.7rem; text-align: center; flex-grow: 1; text-transform: uppercase; color: var(--text-muted); }
+        .deck-sla-badge b { display: block; font-size: 1.1rem; margin-top: 4px; font-weight: 800; }
+
+        /* Helpers de Layout Auxiliar */
+        .grid-2-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .dash-filters { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 20px; }
+        .dash-kpis-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px; }
+        .dash-export-wrapper { display:flex; justify-content:space-between; margin-bottom:20px; align-items:center; }
+
+        /* MEDIA QUERIES */
+        /* ============================================================
+           RESPONSIVIDADE MOBILE
+           ============================================================ */
+
+        /* 1) Evita o zoom automático que o iOS/Safari faz quando o campo
+           tocado tem fonte menor que 16px — é a causa mais comum de
+           "ter que dar zoom pra preencher" em celular. Vale pra qualquer
+           tamanho de tela, não só mobile, porque não tem desvantagem em
+           desktop. */
+        input, select, textarea { font-size: 16px !important; }
+
+        @media (max-width: 1200px) { .dash-filters { grid-template-columns: repeat(3, 1fr); } }
+
+        @media (max-width: 900px) {
+            header { flex-wrap: wrap; gap: 12px; justify-content: center; padding: 12px 15px; }
+            .top-controls { flex-wrap: wrap; justify-content: center; gap: 8px; }
+            .kpi-wrapper { padding: 15px; gap: 15px; } .main-table-wrapper { padding: 0 15px 15px 15px; }
+            .header-logo-bg { padding: 6px 14px; } .header-logo-bg img { height: 34px; }
+            .header-title { font-size: 1.15rem; margin-left: 10px; }
+        }
+
+        @media (max-width: 768px) {
+            .dash-kpis-grid { grid-template-columns: 1fr; gap: 10px; } .dash-filters { grid-template-columns: repeat(2, 1fr); }
+            .dash-export-wrapper { flex-direction: column; gap: 15px; align-items: flex-start; } .grid-2-cols { grid-template-columns: 1fr; }
+            .notif-dropdown { right: -150px; }
+            .vc-chips { grid-template-columns: 1fr; }
+
+            /* Botões do topo: só ícone, sem o texto, pra caber tudo numa linha
+               (o badge de notificações continua visível) */
+            .btn-top-label { display: none; }
+            .btn-top { padding: 10px 12px; min-width: 42px; justify-content: center; }
+            #btnSolicitacoes { min-width: auto; padding: 10px 12px; }
+
+            /* Alvos de toque maiores nas ações da tabela e checkboxes */
+            .rowCheckbox, #selectAllCheckbox { transform: scale(1.4); }
+            table td .btn, table td button { min-height: 38px; }
+
+            /* --- Tabela principal vira lista de cards no mobile --- */
+            .table-container table, .table-container thead, .table-container tbody,
+            .table-container th, .table-container tr { display: block; width: 100%; }
+            .table-container thead { position: absolute; top: -9999px; left: -9999px; } /* esconde cabeçalho, mantém acessível */
+            .table-container tr {
+                margin-bottom: 14px; border: 1px solid var(--border-color); border-radius: 16px;
+                padding: 12px; background: var(--surface-color); box-shadow: var(--shadow-soft);
+            }
+            .table-container td {
+                display: flex; justify-content: space-between; align-items: center; gap: 10px;
+                text-align: right; padding: 9px 4px; border-bottom: 1px dashed var(--border-color); white-space: normal;
+            }
+            .table-container td:last-child { border-bottom: none; }
+            .table-container td::before {
+                content: attr(data-label); font-weight: 700; color: var(--text-muted); font-size: 0.7rem;
+                text-transform: uppercase; letter-spacing: 0.4px; text-align: left; flex-shrink: 0;
+            }
+            .table-container td[data-label="Opções"] { justify-content: flex-start; }
+            .table-container td[data-label="Opções"]::before { display: none; }
+            .table-container td[data-label="Selecionar"] { justify-content: flex-start; padding-bottom: 4px; }
+            .table-container td[data-label="Selecionar"]::before { content: 'Selecionar esta vaga'; }
+        }
+
+        @media (max-width: 480px) {
+            .header-title { font-size: 1.05rem; margin-left: 6px; } .btn-top { padding: 9px 10px; font-size: 0.8rem; }
+            .kpi-wrapper { grid-template-columns: 1fr; padding: 12px; gap: 10px; } .main-table-wrapper { padding: 0 12px 12px 12px; }
+            .login-card { padding: 26px 18px; } .drawer-panel { right: -100vw; width: 100vw; } 
+            .modal-card { padding: 18px; width: 94%; margin: 8px; max-height: 88vh; } .dash-filters { grid-template-columns: 1fr; }
+            .notif-dropdown { right: -220px; width: 280px; max-width: 92vw; }
+            .vc-banner { margin: -18px -18px 18px -18px; padding: 18px 18px 14px 18px; }
+            .vc-sla-ring-wrap { flex-wrap: wrap; }
+            .form-group input, .form-group select, .form-group textarea { padding: 12px; }
+            .btn { padding: 12px 16px; }
+            #bulkBar { padding: 12px 15px !important; flex-direction: column; align-items: flex-start !important; gap: 10px !important; }
+            #bulkBar > div { flex-wrap: wrap; width: 100%; }
+            #bulkBar > div button { flex: 1 1 auto; }
+        }
+
+        #btnFiltrosMobile { display: none; }
+
+        @media (max-width: 768px) {
+            #btnFiltrosMobile { display: inline-flex; }
+            /* Os modais de filtro (que normalmente ficam grudados no cabeçalho da
+               coluna) passam a abrir centralizados na tela — necessário porque o
+               cabeçalho <thead> fica fora da tela quando a tabela vira cards. */
+            .excel-filter-modal.open {
+                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                width: 90vw; max-width: 360px; max-height: 70vh; overflow-y: auto; z-index: 3500;
+                box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Login Overlay -->
+    <div id="login-overlay">
+        <div class="login-card">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h2 style="color: var(--primary); font-size: 2.2rem; font-weight: 800;">SLA Operacional</h2>
+                <p style="color: var(--text-muted); font-size: 0.95rem;">Recrutamento & Seleção</p>
+            </div>
+            <form id="loginForm">
+                <div class="form-group"><label>E-mail ou Usuário</label><input type="text" id="login-email-user" required placeholder="Digite seu acesso..."></div>
+                <div class="form-group" style="position: relative;">
+                    <label>Senha</label><input type="password" id="login-senha" required placeholder="••••••••">
+                    <i class="fas fa-eye" onclick="togglePasswordVisibility()" style="position: absolute; right: 15px; top: 40px; cursor: pointer; color: var(--text-muted);"></i>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 15px; margin-top: 15px; font-size:1.05rem;">Autenticar Acesso <i class="fas fa-arrow-right"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <!-- App Principal & Header -->
+    <div id="app-container" style="display: none;">
+        <header>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <div class="header-logo-bg">
+                    <img src="https://drive.google.com/thumbnail?id=1z72VfhiiZMw7DBbS6qQ1w0yn7CXKvAJP&sz=w1000" onerror="this.onerror=null;this.src='https://drive.google.com/uc?export=view&id=1z72VfhiiZMw7DBbS6qQ1w0yn7CXKvAJP';" alt="Logo">
+                </div>
+                <div class="header-title">Analytics & Operação</div>
+            </div>
+            <div class="top-controls">
+                <button class="btn-top" onclick="toggleEyeComfort()" title="Conforto Ocular (On/Off)"><i class="fas fa-eye"></i></button>
+                <button class="btn-top" onclick="openChartModal()"><i class="fas fa-chart-pie"></i> <span class="btn-top-label">Dashboards</span></button>
+                <button class="btn-top" onclick="openPerformanceSummary()"><i class="fas fa-id-card"></i> <span class="btn-top-label">Desempenho</span></button>
+                <button class="btn-top" onclick="openExportModal()"><i class="fas fa-file-excel" style="color:#10b981;"></i> <span class="btn-top-label">Exportar</span></button>
+                <button class="btn-top" onclick="openPeriodoModal()" title="Solicitar transferência por período (férias)"><i class="fas fa-plane-departure"></i></button>
+                <button class="btn-top" id="btnSolicitacoes" style="display:none; position:relative;" onclick="openSolicitacoesModal()" title="Central de Solicitações">
+                    <i class="fas fa-inbox"></i> <span class="btn-top-label">Solicitações</span>
+                    <span id="solicBadge" style="display:none; background:var(--danger); color:#fff; font-size:0.65rem; font-weight:800; padding:2px 6px; border-radius:10px; margin-left:4px;">0</span>
+                </button>
+                <button class="btn-top" id="btnGrupos" style="display:none;" onclick="openGruposModal()" title="Gerenciar Grupos de Recrutamento"><i class="fas fa-layer-group"></i> <span class="btn-top-label">Grupos</span></button>
+                
+                <div class="notification-bell" onclick="toggleNotifications()">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge" id="notifBadge" style="display:none;">0</span>
+                    <div class="notif-dropdown" id="notifDropdown" onclick="event.stopPropagation()">
+                        <div class="notif-header">Notificações <button style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:0.8rem;" onclick="clearNotifHistory()"><i class="fas fa-trash"></i> Limpar</button></div>
+                        <div class="notif-list" id="notifList"></div>
+                    </div>
+                </div>
+
+                <div class="user-profile" onclick="document.getElementById('prefs-drawer').classList.add('open')">
+                    <div class="user-info">
+                        <span class="user-name" id="header-name">Usuário</span>
+                        <span class="user-role" id="header-role">Perfil</span>
+                    </div>
+                    <img src="" id="header-avatar" class="user-avatar" alt="Avatar">
+                </div>
+            </div>
+        </header>
+
+        <!-- Barra de ação em massa (aparece quando há vagas selecionadas) -->
+        <div id="bulkBar" style="display:none; position:sticky; top:73px; z-index:90; background:var(--text-main); color:var(--bg-base); padding:12px 40px; display:none; align-items:center; justify-content:space-between; gap:15px;">
+            <span><i class="fas fa-check-square"></i> <b id="bulkCount">0</b> vaga(s) selecionada(s)</span>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-secondary" style="padding:8px 14px; font-size:0.8rem;" onclick="bulkAction('propriedade')"><i class="fas fa-hand-paper"></i> Solicitar Propriedade</button>
+                <button class="btn btn-secondary" style="padding:8px 14px; font-size:0.8rem;" onclick="openTransferModal(null)"><i class="fas fa-exchange-alt"></i> Transferir</button>
+                <button class="btn btn-danger" style="padding:8px 14px; font-size:0.8rem;" onclick="bulkAction('exclusao')"><i class="fas fa-trash"></i> Excluir</button>
+                <button class="btn btn-secondary" style="padding:8px 14px; font-size:0.8rem;" onclick="clearSelection()">Limpar seleção</button>
+            </div>
+        </div>
+
+        <!-- KPIs Base -->
+        <div class="kpi-wrapper">
+            <div class="kpi-card"><div class="kpi-title">SLA Médio <i class="fas fa-stopwatch" style="color:var(--primary)"></i></div><div class="kpi-value" id="kpi-sla-medio">0.0</div></div>
+            <div class="kpi-card"><div class="kpi-title">Total de Vagas (Visíveis) <i class="fas fa-briefcase" style="color:var(--text-muted)"></i></div><div class="kpi-value" id="kpi-total">0</div></div>
+            <div class="kpi-card"><div class="kpi-title">Fechadas <i class="fas fa-check-circle" style="color:var(--success)"></i></div><div class="kpi-value" id="kpi-fechadas">0</div></div>
+            <div class="kpi-card"><div class="kpi-title">Aguardando Admissão <i class="fas fa-user-clock" style="color:var(--st-admissao)"></i></div><div class="kpi-value" id="kpi-admissao">0</div></div>
+        </div>
+
+        <!-- Tabela Dinâmica com Abas de Filtro de Status -->
+        <div class="main-table-wrapper">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; flex-wrap: wrap; gap:10px;">
+                <div style="display:flex; align-items:center; gap: 15px; flex-wrap: wrap;">
+                    <h3 style="color:var(--text-main); margin:0;">Gestão Dinâmica</h3>
+                    
+                    <div style="display:flex; background:var(--bg-base); padding:4px; border-radius:30px; border:1px solid var(--border-color);">
+                        <button class="btn btn-primary" id="tab-todas" style="padding:6px 16px; font-size:0.8rem; border-radius:20px; border:none; box-shadow:none;" onclick="setTabFilter('todas')">Todas as Vagas</button>
+                        <button class="btn" id="tab-ativas" style="padding:6px 16px; font-size:0.8rem; border-radius:20px; border:none; background:transparent; color:var(--text-muted); box-shadow:none;" onclick="setTabFilter('ativas')">Em Andamento</button>
+                        <button class="btn" id="tab-fechadas" style="padding:6px 16px; font-size:0.8rem; border-radius:20px; border:none; background:transparent; color:var(--text-muted); box-shadow:none;" onclick="setTabFilter('fechadas')">Finalizadas / Perdas</button>
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-primary" id="btnFiltrosMobile" onclick="abrirEscolhaFiltroMobile()"><i class="fas fa-filter"></i> Filtros</button>
+                    <button class="btn btn-secondary" onclick="clearAllFilters()"><i class="fas fa-filter-slash"></i> <span class="btn-top-label">Limpar Filtros Excel</span></button>
+                </div>
+            </div>
+
+            <!-- Painel mobile: escolher qual coluna filtrar (os ícones de filtro do
+                 cabeçalho da tabela ficam inacessíveis quando a tabela vira cards) -->
+            <div class="modal-overlay" id="mobileFiltroColunaModal">
+                <div class="modal-card" style="max-width: 380px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+                        <h3 style="color:var(--text-main); margin:0;"><i class="fas fa-filter"></i> Filtrar por qual coluna?</h3>
+                        <button class="close-drawer" onclick="document.getElementById('mobileFiltroColunaModal').classList.remove('active')"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div id="mobileFiltroColunaList" style="display:flex; flex-direction:column; gap:8px; max-height:60vh; overflow-y:auto;"></div>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table id="mainTable">
+                    <thead id="table-head">
+                        <!-- Gerado via JS -->
+                    </thead>
+                    <tbody id="grid-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preferencias Drawer -->
+    <div id="prefs-drawer" class="drawer-panel">
+        <div class="drawer-header">
+            <h3><i class="fas fa-cog"></i> Configurações</h3>
+            <button class="close-drawer" onclick="document.getElementById('prefs-drawer').classList.remove('open')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="drawer-content">
+            <div class="form-group" style="text-align:center;">
+                <img src="" id="drawer-avatar-preview" style="width:100px; height:100px; border-radius:50%; object-fit:cover; margin-bottom:10px; border: 3px solid var(--primary); background:white;">
+                <div class="file-upload-wrapper" style="height:40px;">
+                    <span id="avatarFileDisplay"><i class="fas fa-camera"></i> Trocar Foto (Upload S3)</span>
+                    <input type="file" accept="image/*" onchange="handleAvatarSelect(event)">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Tema da Interface</label>
+                <select id="pref-theme" onchange="previewTheme(this.value)">
+                    <option value="light">Biotech Light</option><option value="dark">Biotech Dark</option>
+                    <option value="sweet-sugar">Sweet Sugar</option><option value="sweet-coffe">Sweet Coffe</option>
+                    <option value="love-pink">Love Pink</option><option value="punk-pink">Punk Pink</option>
+                    <option value="viking-tea">Viking Tea</option><option value="viking-coffe">Viking Coffe</option>
+                    <option value="lonely-winter">Lonely Winter</option><option value="beautiful-fall">Beautiful Fall</option>
+                    <option value="magma-gamer">Magma Gamer</option><option value="eclipse">Eclipse</option>
+                    <option value="tarot-light">Tarot Light (Místico)</option><option value="tarot-dark">Tarot Dark (Místico)</option>
+                    <option value="forest-light">Forest Light (Natureza)</option><option value="forest-dark">Forest Dark (Natureza)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Fonte do Sistema</label>
+                <select id="pref-font" onchange="previewFont(this.value)">
+                    <option value="'Inter', sans-serif" style="font-family:'Inter', sans-serif;">Inter — Moderna & Neutra</option>
+                    <option value="'Manrope', sans-serif" style="font-family:'Manrope', sans-serif;">Manrope — Corporativa & Elegante</option>
+                    <option value="'Poppins', sans-serif" style="font-family:'Poppins', sans-serif;">Poppins — Geométrica & Amigável</option>
+                    <option value="'Nunito', sans-serif" style="font-family:'Nunito', sans-serif;">Nunito — Redonda & Acolhedora</option>
+                    <option value="'Quicksand', sans-serif" style="font-family:'Quicksand', sans-serif;">Quicksand — Suave & Leve</option>
+                    <option value="'Space Grotesk', sans-serif" style="font-family:'Space Grotesk', sans-serif;">Space Grotesk — Técnica & Moderna</option>
+                    <option value="'Lora', serif" style="font-family:'Lora', serif;">Lora — Editorial & Serifada</option>
+                    <option value="'JetBrains Mono', monospace" style="font-family:'JetBrains Mono', monospace;">JetBrains Mono — Precisa & Monoespaçada</option>
+                    <option value="'Segoe UI', Tahoma, sans-serif">Segoe UI — Padrão do Sistema</option>
+                </select>
+            </div>
+
+            <div class="form-group"><label>Emoji Gamificação (Vitória)</label><input type="text" id="pref-emoji" placeholder="Ex: 🍾, 🎉, 🚀"></div>
+            
+            <h4 style="margin-top:10px; color:var(--text-main); border-bottom:1px solid var(--border-color); padding-bottom:5px;">Personalizar Cores SLA</h4>
+            <div class="grid-2-cols" style="gap:10px;">
+                <div class="form-group"><label style="font-size:0.75rem;">Aberta</label><input type="color" id="pref-st-aberta" style="padding:0; height:35px;"></div>
+                <div class="form-group"><label style="font-size:0.75rem;">Stand-by</label><input type="color" id="pref-st-standby" style="padding:0; height:35px;"></div>
+                <div class="form-group"><label style="font-size:0.75rem;">Ag. Admissão</label><input type="color" id="pref-st-admissao" style="padding:0; height:35px;"></div>
+                <div class="form-group"><label style="font-size:0.75rem;">Fechada</label><input type="color" id="pref-st-fechada" style="padding:0; height:35px;"></div>
+                <div class="form-group"><label style="font-size:0.75rem;">Cancelada</label><input type="color" id="pref-st-cancelada" style="padding:0; height:35px;"></div>
+                <div class="form-group"><label style="font-size:0.75rem;">Desistência</label><input type="color" id="pref-st-desistencia" style="padding:0; height:35px;"></div>
+            </div>
+            
+            <button class="btn btn-primary" id="btnSavePrefs" onclick="savePreferences()" style="margin-top:auto; padding: 15px;"><i class="fas fa-save"></i> Salvar Preferências</button>
+        </div>
+    </div>
+
+    <!-- Chat Drawer -->
+    <div id="chat-drawer" class="drawer-panel">
+        <div class="drawer-header">
+            <h3 id="chat-title-header" style="font-size:1.2rem;"><i class="fas fa-comments"></i> Chat da Vaga</h3>
+            <button class="close-drawer" onclick="document.getElementById('chat-drawer').classList.remove('open')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="drawer-content" id="chat-messages-container" style="background: rgba(0,0,0,0.02);"></div>
+        <div class="chat-input-area">
+            <div class="mentions-dropdown" id="mentionsDropdown"></div>
+            <input type="text" id="chat-input" placeholder="Msg (use @)..." autocomplete="off" onkeyup="handleChatMentions(event)">
+            <button onclick="sendChatMessage()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <!-- Modal Ações Padrão -->
+    <div class="modal-overlay" id="actionModal">
+        <div class="modal-card">
+            <h3 id="actionModalTitle" style="color:var(--text-main); margin-bottom:20px;">Opções da Vaga</h3>
+            <div id="action-buttons-container" style="display:flex; flex-direction:column; gap:10px;"></div>
+            <div id="action-form-container" style="display: none; margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 20px;"></div>
+            <div class="modal-actions" style="margin-top: 20px; display:flex; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="document.getElementById('actionModal').classList.remove('active')">Cancelar / Voltar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal CARD DA VAGA -->
+    <div class="modal-overlay" id="vagaCardModal">
+        <div class="modal-card" style="max-width: 480px;">
+            <div class="vc-banner" id="vcBanner">
+                <div class="vc-banner-top">
+                    <div>
+                        <span class="vc-banner-badge" id="vcBadge">Aberta</span>
+                        <div class="vc-banner-cargo" id="vcCargo">Cargo da Vaga</div>
+                        <div class="vc-banner-filial" id="vcFilial">Filial / Setor</div>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button class="vc-close-x" id="vcExpandBtn" onclick="toggleVcExpand()" title="Ver todas as informações"><i class="fas fa-expand"></i></button>
+                        <button class="vc-close-x" onclick="document.getElementById('vagaCardModal').classList.remove('active')"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <div class="vc-sla-ring-wrap" id="vcSlaWrap">
+                    <div class="vc-sla-ring">
+                        <svg viewBox="0 0 56 56">
+                            <circle class="vc-sla-ring-bg" cx="28" cy="28" r="24"></circle>
+                            <circle class="vc-sla-ring-fg" id="vcSlaRingFg" cx="28" cy="28" r="24" stroke-dasharray="150.8" stroke-dashoffset="0"></circle>
+                        </svg>
+                        <div class="vc-sla-ring-text" id="vcSlaRingText">0d</div>
+                    </div>
+                    <div class="vc-sla-label">SLA em andamento<b id="vcSlaText">0 / 0 dias úteis</b></div>
+                </div>
+            </div>
+
+            <div class="vc-chips" id="vcDetails">
+                <!-- Preenchido por JS -->
+            </div>
+
+            <div id="vcCandidatoBox" class="vc-candidato-box" style="display:none;">
+                <div class="vc-candidato-avatar" id="vcCandidatoAvatar">-</div>
+                <div>
+                    <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Candidato</div>
+                    <div style="font-weight:700; color:var(--text-main);" id="vcCandidatoNome">-</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted);" id="vcCandidatoMatricula">-</div>
+                </div>
+            </div>
+
+            <!-- Face expandida: só aparece com o botão de "expandir" no topo -->
+            <div id="vcExpandedSection" style="display:none; margin-bottom: 18px;">
+                <hr style="border:0; border-top:1px solid var(--border-color); margin: 0 0 14px 0;">
+                <h4 style="color:var(--text-main); margin-bottom:10px; font-size:0.85rem;"><i class="fas fa-circle-info"></i> Informações Completas</h4>
+                <div class="vc-chips" id="vcExpandedDetails"></div>
+            </div>
+
+            <hr style="border:0; border-top:1px solid var(--border-color); margin: 0 0 18px 0;">
+
+            <div id="vcAnexoWrap" style="display:none; margin-bottom:12px;"></div>
+
+            <h4 style="color:var(--text-main); margin-bottom:12px; font-size:0.95rem;"><i class="fas fa-bolt"></i> Ações</h4>
+            <div id="vcActionButtons" style="display:flex; flex-direction:column; gap:10px;"></div>
+
+            <div id="vcHistoricoWrap" style="display:none; margin-top:20px;">
+                <h4 style="color:var(--text-main); margin-bottom:10px; font-size:0.85rem;"><i class="fas fa-history"></i> Histórico de Transferências</h4>
+                <div id="vcHistoricoList" style="display:flex; flex-direction:column; gap:6px; max-height:150px; overflow-y:auto;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Modal -->
+    <div class="modal-overlay" id="chartModal">
+        <div class="modal-card chart-card" style="background:var(--bg-base); max-width: 95vw; height: 95vh; display: flex; flex-direction: column; overflow: hidden; padding: 15px;">
+            <div id="dashExportArea" style="background:var(--bg-base); padding: 5px; flex-grow: 1; display: flex; flex-direction: column;">
+                
+                <div class="dash-export-wrapper" data-html2canvas-ignore>
+                    <h3 style="margin: 0; color:var(--text-main);"><i class="fas fa-chart-pie"></i> Dashboard Analítico</h3>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn btn-primary" onclick="downloadDashboard(event)"><i class="fas fa-download"></i> Baixar PNG</button>
+                        <button class="btn btn-secondary" onclick="document.getElementById('chartModal').classList.remove('active')"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                
+                <div class="dash-filters" data-html2canvas-ignore>
+                    <select class="btn-secondary" style="padding:8px; border-radius:8px; font-size:0.8rem;" id="dFiltroDir" onchange="populateDashFilters(); updateDashboard();"><option value="">Diretor (Todos)</option></select>
+                    <select class="btn-secondary" style="padding:8px; border-radius:8px; font-size:0.8rem;" id="dFiltroDistrital" onchange="populateDashFilters(); updateDashboard();"><option value="">Distrital (Todos)</option></select>
+                    <select class="btn-secondary" style="padding:8px; border-radius:8px; font-size:0.8rem;" id="dFiltroCoord" onchange="populateDashFilters(); updateDashboard();"><option value="">Coordenador (Todos)</option></select>
+                    <select class="btn-secondary" style="padding:8px; border-radius:8px; font-size:0.8rem;" id="dFiltroRec" onchange="populateDashFilters(); updateDashboard();"><option value="">Recrutadora (Todas)</option></select>
+                    <select class="btn-secondary" style="padding:8px; border-radius:8px; font-size:0.8rem;" id="dFiltroStat" onchange="populateDashFilters(); updateDashboard();"><option value="">Status (Todos)</option></select>
+                    <input type="month" class="btn-secondary" style="padding:8px; border-radius:8px; font-size:0.8rem;" id="dFiltroData" onchange="populateDashFilters(); updateDashboard();">
+                </div>
+
+                <div class="dash-kpis-grid">
+                    <div class="kpi-card" style="padding: 15px; border-left: 4px solid var(--success);"><div class="kpi-title">Fechadas</div><div class="kpi-value" id="d-val-fechadas" style="color:var(--success)">0</div></div>
+                    <div class="kpi-card" style="padding: 15px; border-left: 4px solid var(--st-admissao);"><div class="kpi-title">Ag. Admissão</div><div class="kpi-value" id="d-val-adm" style="color:var(--st-admissao)">0</div></div>
+                    <div class="kpi-card" style="padding: 15px; border-left: 4px solid var(--warning);"><div class="kpi-title">Pendentes</div><div class="kpi-value" id="d-val-pend" style="color:var(--warning)">0</div></div>
+                </div>
+
+                <div style="flex-grow: 1; min-height: 250px; background:var(--surface-color); padding:20px; border-radius:16px; border:1px solid var(--border-color); display:flex; flex-direction:column;">
+                    <h4 id="dashChartTitle" style="text-align:center; color:var(--text-main); font-size:1rem; margin-bottom:10px;">SLA Médio</h4>
+                    <div style="position:relative; flex-grow:1;"><canvas id="recruiterChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Resumo de Desempenho (Deck de Cards Moderno) -->
+    <div class="modal-overlay" id="perfModal">
+        <div class="modal-card" style="max-width: 1400px; width: 95%; background:var(--bg-base); height:90vh; display:flex; flex-direction:column; padding: 20px;">
+            <div class="dash-export-wrapper">
+                <h3 style="color:var(--text-main); margin:0; font-size: 1.5rem;"><i class="fas fa-id-card"></i> Desempenho do Time</h3>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <input type="date" id="perfStart" class="btn-secondary" style="display:none; padding:8px; border-radius:8px;" onchange="renderPerfCards()">
+                    <input type="date" id="perfEnd" class="btn-secondary" style="display:none; padding:8px; border-radius:8px;" onchange="renderPerfCards()">
+                    <select class="btn-secondary" id="perfPeriod" style="padding:8px; border-radius:8px;" onchange="toggleCustomPerfDate()">
+                        <option value="mes_atual">Mês Atual</option>
+                        <option value="mes_passado">Mês Passado</option>
+                        <option value="ano">Ano Atual</option>
+                        <option value="total">Período Total</option>
+                        <option value="custom">Período Específico...</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="document.getElementById('perfModal').classList.remove('active')"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            
+            <div id="perfDeck" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; overflow-y: auto; padding-right:5px; padding-bottom: 20px; flex-grow: 1;">
+                <!-- Cards renderizados via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Exportação para Excel -->
+    <div class="modal-overlay" id="exportModal">
+        <div class="modal-card" style="max-width: 450px; text-align:center;">
+            <div style="margin-bottom:25px;">
+                <i class="fas fa-file-excel" style="font-size: 3rem; color: #10b981; margin-bottom:15px;"></i>
+                <h3 style="color:var(--text-main); margin:0;">Exportar Dados Analíticos</h3>
+                <p style="color:var(--text-muted); font-size:0.9rem; margin-top:5px;">A exportação respeitará a Aba selecionada (Em Andamento, Fechadas ou Todas)</p>
+            </div>
+            
+            <button class="btn btn-primary" style="width:100%; margin-bottom:12px; padding: 15px; justify-content: flex-start;" onclick="exportRelatorioVagas(event)">
+                <i class="fas fa-table" style="font-size: 1.2rem; width: 30px;"></i> Relatório Dinâmico de Vagas (Tabela)
+            </button>
+            <button class="btn btn-primary" style="width:100%; margin-bottom:12px; padding: 15px; justify-content: flex-start;" onclick="exportDesempenho(event)">
+                <i class="fas fa-user-chart" style="font-size: 1.2rem; width: 30px;"></i> Análise de Desempenho (Recrutadoras)
+            </button>
+            <button class="btn btn-primary" style="width:100%; margin-bottom:25px; padding: 15px; justify-content: flex-start;" onclick="exportOperacional(event)">
+                <i class="fas fa-building" style="font-size: 1.2rem; width: 30px;"></i> Resumo Operacional (Cargos/Filial)
+            </button>
+            
+            <button class="btn btn-secondary" style="width:100%; padding: 12px;" onclick="document.getElementById('exportModal').classList.remove('active')">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- Modal Central de Solicitações (Administrador) -->
+    <div class="modal-overlay" id="solicitacoesModal">
+        <div class="modal-card" style="max-width: 700px; max-height: 85vh;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+                <h3 style="color:var(--text-main); margin:0;"><i class="fas fa-inbox"></i> Central de Solicitações</h3>
+                <button class="close-drawer" onclick="document.getElementById('solicitacoesModal').classList.remove('active')"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="solicitacoesList" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>
+    </div>
+
+    <!-- Modal Grupos de Recrutamento (Administrador) -->
+    <div class="modal-overlay" id="gruposModal">
+        <div class="modal-card" style="max-width: 600px; max-height: 85vh;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+                <h3 style="color:var(--text-main); margin:0;"><i class="fas fa-layer-group"></i> Grupos de Recrutamento</h3>
+                <button class="close-drawer" onclick="document.getElementById('gruposModal').classList.remove('active')"><i class="fas fa-times"></i></button>
+            </div>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">Os grupos vêm da coluna "grupos_recrutamento" na base de filiais (tabela_heart_fact) — edite lá pra criar novos. Aqui você só atribui os grupos existentes às recrutadoras.</p>
+            <div id="gruposList" style="display:flex; flex-direction:column; gap:8px; margin-bottom: 25px;"></div>
+
+            <hr style="border:0; border-top:1px solid var(--border-color); margin: 20px 0;">
+            <h4 style="color:var(--text-main); margin-bottom:15px;"><i class="fas fa-user-tag"></i> Atribuir Grupos a uma Recrutadora</h4>
+            <div class="form-group"><label>Recrutadora</label><select id="grupoUsuarioSelect" class="btn-secondary" onchange="carregarGruposDoUsuario()"></select></div>
+            <div id="grupoUsuarioCheckboxes" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:15px;"></div>
+            <button class="btn btn-primary" onclick="salvarGruposDoUsuario()" style="width:100%;"><i class="fas fa-save"></i> Salvar Grupos desta Recrutadora</button>
+        </div>
+    </div>
+
+    <!-- Modal Transferir Vaga -->
+    <div class="modal-overlay" id="transferModal">
+        <div class="modal-card" style="max-width: 420px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+                <h3 style="color:var(--text-main); margin:0;"><i class="fas fa-exchange-alt"></i> Transferir Vaga</h3>
+                <button class="close-drawer" onclick="document.getElementById('transferModal').classList.remove('active')"><i class="fas fa-times"></i></button>
+            </div>
+            <p id="transferHint" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;"></p>
+            <div class="form-group"><label>Transferir para</label><select id="transferAlvoSelect" class="btn-secondary"></select></div>
+            <div class="form-group"><label>Motivo (opcional)</label><textarea id="transferMotivo" rows="2" class="btn-secondary"></textarea></div>
+            <button class="btn btn-primary" id="btnConfirmTransfer" onclick="confirmarTransferencia()" style="width:100%;"><i class="fas fa-paper-plane"></i> Confirmar</button>
+        </div>
+    </div>
+
+    <!-- Modal Transferência por Período (Férias) -->
+    <div class="modal-overlay" id="periodoModal">
+        <div class="modal-card" style="max-width: 420px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+                <h3 style="color:var(--text-main); margin:0;"><i class="fas fa-plane-departure"></i> Transferência por Período</h3>
+                <button class="close-drawer" onclick="document.getElementById('periodoModal').classList.remove('active')"><i class="fas fa-times"></i></button>
+            </div>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">Todas as vagas que você possui hoje serão transferidas para a pessoa escolhida. Não voltam sozinhas quando o período acabar.</p>
+            <div class="form-group"><label>Recrutadora de Origem</label><select id="periodoOrigemSelect" class="btn-secondary"></select></div>
+            <div class="form-group"><label>Transferir para</label><select id="periodoDestinoSelect" class="btn-secondary"></select></div>
+            <div class="grid-2-cols">
+                <div class="form-group"><label>Início</label><input type="date" id="periodoInicio" class="btn-secondary"></div>
+                <div class="form-group"><label>Fim</label><input type="date" id="periodoFim" class="btn-secondary"></div>
+            </div>
+            <div class="form-group"><label>Motivo</label><input type="text" id="periodoMotivo" placeholder="Ex: Férias" class="btn-secondary"></div>
+            <button class="btn btn-primary" onclick="confirmarPeriodo()" style="width:100%;"><i class="fas fa-paper-plane"></i> Enviar</button>
+        </div>
+    </div>
+
+    <!-- Modal Gamificação -->
+    <div class="modal-overlay" id="gamificationModal">
+        <div class="modal-card" style="text-align: center; max-width: 400px; padding: 50px;">
+            <div id="gamiEmoji" style="font-size: 5rem; text-shadow: 0 10px 20px rgba(0,0,0,0.2);">🎉</div>
+            <h3 style="color: var(--success); font-size: 2.2rem; font-weight:800; margin: 15px 0;">Excelente!</h3>
+            <p style="color: var(--text-muted); margin-bottom: 25px; font-size: 1.1rem;">Mais um talento integrado ao time.</p>
+            <button class="btn btn-primary" onclick="document.getElementById('gamificationModal').classList.remove('active')">Continuar Trabalho</button>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+        // Init & Variaveis Globais Supabase REST
+        const SUPABASE_URL = 'https://ueicrehzfrwewgteqxvi.supabase.co/rest/v1';
+        const SUPABASE_KEY = 'sb_publishable_2TR1oEEywsdfai5_Vf5Aaw_OUNayOh9';
+        const headers = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+
+        // CONFIGURAÇÃO OFICIAL AWS SDK - Para uploads nativos em Buckets S3
+        AWS.config.update({
+            accessKeyId: 'd3c2e0c7dab5fb0a6fef90b0b00ced00',
+            secretAccessKey: 'fb4ae604793a5baceb384a7338f973a3df6b454399382131dd4dbacedece62fb',
+            region: 'sa-east-1'
+        });
+
+        const s3Client = new AWS.S3({
+            endpoint: 'https://ueicrehzfrwewgteqxvi.storage.supabase.co/storage/v1/s3',
+            s3ForcePathStyle: true,
+            signatureVersion: 'v4'
+        });
+
+        let currentUser = null; let allUsers = []; let rawData = []; let filteredData = []; let activeFilters = {}; 
+        let selectedVaga = null; let mainChart = null; let currentActionType = null;
+        let selectedFile = null; let avatarFile = null; let silentUpdateInterval = null;
+        let currentTabFilter = 'todas'; 
+        let selectedVagas = new Set(); // ids das vagas selecionadas na tabela
+        
+        // Notificações agora vivem na tabela tbl_notifications (não mais no localStorage),
+        // então funcionam entre dispositivos/navegadores diferentes do mesmo usuário.
+        let notifsHistory = []; 
+        
+        Chart.register(ChartDataLabels);
+        Chart.defaults.set('plugins.datalabels', { color: '#000000', backgroundColor: '#ffffff', borderRadius: 4, font: { weight: 'bold' }, padding: 6 });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.addEventListener('click', (e) => { if(!e.target.closest('th')) { document.querySelectorAll('.excel-filter-modal').forEach(m => m.classList.remove('open')); } });
+            checkSession();
+        });
+
+        function togglePasswordVisibility() { const p = document.getElementById('login-senha'); p.type = p.type === 'password' ? 'text' : 'password'; }
+        
+        async function handleLogin(e) {
+            e.preventDefault(); const ident = document.getElementById('login-email-user').value.trim().toLowerCase(); const pwd = document.getElementById('login-senha').value.trim();
+            try {
+                const res = await fetch(`${SUPABASE_URL}/usuarios?select=*`, { headers }); const users = await res.json(); allUsers = users;
+                const user = users.find(u => ((u.email_usuario||"").toLowerCase() === ident || (u.usuario||"").toLowerCase() === ident) && u.senha_user === pwd);
+                if (user) { currentUser = user; sessionStorage.setItem('sla_user', JSON.stringify(currentUser)); initApp(); } 
+                else showToast("Credenciais inválidas.", true);
+            } catch (err) { showToast("Erro de conexão.", true); }
+        }
+        
+        async function checkSession() { 
+            const saved = sessionStorage.getItem('sla_user'); 
+            if (saved) { currentUser = JSON.parse(saved); fetch(`${SUPABASE_URL}/usuarios?select=*`, { headers }).then(r=>r.json()).then(d=>allUsers=d); initApp(); } 
+        }
+
+        function initApp() {
+            document.getElementById('login-overlay').style.display = 'none'; document.getElementById('app-container').style.display = 'block';
+            document.getElementById('header-name').innerText = currentUser.usuario; document.getElementById('header-role').innerText = currentUser.nivel_permissao || 'Operacional';
+            loadPreferences(); buildTableHeaders(); loadGrupos().then(() => { atualizarVisibilidadeAdmin(); loadVagas(true); });
+            startPolling();
+        }
+
+        // Polling automático de fundo — pensado pra economizar banda (egress) do plano
+        // do Supabase: intervalo maior (5 min, em vez de 1) e pausa quando a aba não
+        // está em foco (a maior parte da economia vem daqui, já que muita gente deixa
+        // o app aberto numa aba em segundo plano o dia todo sem estar olhando).
+        const POLLING_INTERVAL_MS = 5 * 60 * 1000; // 5 minutos
+
+        function pollAgora() {
+            loadVagas(false);
+            if (isUserAdmin(currentUser)) refreshSolicBadge();
+        }
+
+        function startPolling() {
+            if (silentUpdateInterval) clearInterval(silentUpdateInterval);
+            silentUpdateInterval = setInterval(() => {
+                if (document.visibilityState !== 'visible') return; // aba em segundo plano: não gasta banda
+                pollAgora();
+            }, POLLING_INTERVAL_MS);
+        }
+
+        // Ao voltar pra aba, atualiza na hora — assim o intervalo maior não faz
+        // os dados parecerem desatualizados quando a pessoa volta a olhar o app.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && currentUser) pollAgora();
+        });
+
+        // --- GRUPOS DE RECRUTAMENTO ---
+        let allGroups = []; // [{id, nome, is_admin}]
+
+        async function loadGrupos() {
+            try {
+                const [resGrupos, resHeart] = await Promise.all([
+                    fetch(`${SUPABASE_URL}/grupos_recrutamento?select=*`, { headers }),
+                    fetch(`${SUPABASE_URL}/tabela_heart_fact?select=grupos_recrutamento&grupos_recrutamento=not.is.null`, { headers })
+                ]);
+                const grupos = await resGrupos.json();
+                const heartRows = await resHeart.json();
+
+                const nomesExplicitos = Array.isArray(grupos) ? grupos : [];
+                const nomesDaHeartFact = new Set();
+                (Array.isArray(heartRows) ? heartRows : []).forEach(r => { if (r.grupos_recrutamento && r.grupos_recrutamento.trim()) nomesDaHeartFact.add(r.grupos_recrutamento.trim()); });
+
+                // Mescla: começa pelos grupos "de verdade" (ex: Administrador), e adiciona
+                // como itens somente-leitura os nomes que só existem na heart_fact.
+                const nomesJaListados = new Set(nomesExplicitos.map(g => g.nome));
+                const extras = Array.from(nomesDaHeartFact).filter(n => !nomesJaListados.has(n)).map(nome => ({ id: null, nome, is_admin: false, somenteLeitura: true }));
+
+                allGroups = [...nomesExplicitos, ...extras];
+            } catch(e) { console.error('Erro ao carregar grupos', e); allGroups = []; }
+        }
+
+        function getUserGroupNames(user) {
+            if (!user || !user.grupos_recrutamento) return [];
+            return user.grupos_recrutamento.split(';').map(g => g.trim()).filter(Boolean);
+        }
+
+        function isUserAdmin(user) {
+            if (!user) return false;
+            if (user.nivel_permissao && user.nivel_permissao !== 'Recrutadora') return true; // compatibilidade com o nível de permissão existente
+            const myGroups = getUserGroupNames(user);
+            return allGroups.some(g => g.is_admin && myGroups.includes(g.nome));
+        }
+
+        function atualizarVisibilidadeAdmin() {
+            const admin = isUserAdmin(currentUser);
+            document.getElementById('btnSolicitacoes').style.display = admin ? 'inline-flex' : 'none';
+            document.getElementById('btnGrupos').style.display = admin ? 'inline-flex' : 'none';
+            if (admin) refreshSolicBadge();
+        }
+
+        // --- CORE: REGRA DE ACESSO A DADOS ---
+        // Vaga sem grupo (grupo_atribuido vazio) = visível pra todo mundo.
+        // Vaga com grupo = visível só pra quem está naquele grupo (ou já é dona dela).
+        // Administrador (grupo com is_admin) vê tudo, sempre.
+        function getUserRawData() {
+            if (!currentUser) return [];
+            if (isUserAdmin(currentUser)) return rawData;
+
+            const myUsuario = (currentUser.usuario || '').toLowerCase();
+            const myGroups = getUserGroupNames(currentUser);
+
+            return rawData.filter(v => {
+                if (!v.grupo_atribuido || v.grupo_atribuido.trim() === '') return true; // vaga aberta a todos
+                if (myGroups.includes(v.grupo_atribuido)) return true; // sou do grupo dono da vaga
+                if ((v.recrutadora_responsavel || '').toLowerCase() === myUsuario) return true; // eu já sou dona, mesmo que o grupo tenha mudado depois
+                return false;
+            });
+        }
+
+        // --- HELPERS DE REQUISIÇÃO (evitam falhas silenciosas de RLS/PATCH) ---
+        // Quando o Supabase bloqueia um UPDATE por causa de RLS, ele responde 200 OK
+        // com um array vazio [] (não um erro). Por isso todo PATCH aqui verifica
+        // explicitamente se alguma linha voltou - senão, lança erro de verdade.
+        async function patchSupabase(table, idFilter, payload) {
+            const res = await fetch(`${SUPABASE_URL}/${table}?${idFilter}`, {
+                method: 'PATCH', headers, body: JSON.stringify(payload)
+            });
+            let data = null;
+            try { data = await res.json(); } catch(e) { /* resposta sem corpo */ }
+
+            if (!res.ok) {
+                throw new Error((data && data.message) || `Falha na requisição (HTTP ${res.status}).`);
+            }
+            if (!Array.isArray(data) || data.length === 0) {
+                throw new Error('Nenhuma linha foi atualizada. Verifique a política de UPDATE (RLS) desta tabela no Supabase, ou se o filtro de ID está correto.');
+            }
+            return data[0];
+        }
+
+        // Preferências & Avatar — agora persistidas no banco (usuarios + tbl_user_preferences),
+        // não mais no localStorage. Isso faz as preferências acompanharem o usuário entre
+        // dispositivos/navegadores diferentes.
+        const STATUS_MAP = { aberta: 'Aberta', standby: 'Stand-by', admissao: 'Aguardando Admissão', fechada: 'Fechada', cancelada: 'Cancelada', desistencia: 'Desistência' };
+
+        async function loadPreferences() {
+            // Tema/fonte/emoji/conforto ocular são 1 valor por usuário -> colunas simples em "usuarios"
+            const theme = currentUser.tema || 'light'; previewTheme(theme); document.getElementById('pref-theme').value = theme;
+            const font = currentUser.fonte || "'Inter', sans-serif"; previewFont(font); document.getElementById('pref-font').value = font;
+            document.getElementById('pref-emoji').value = currentUser.emoji_vitoria || '';
+            document.body.classList.toggle('eye-comfort', !!currentUser.eye_comfort);
+
+            // Cores por status ficam em tbl_user_preferences (1 linha por usuário+status)
+            let colorPrefs = {};
+            try {
+                const res = await fetch(`${SUPABASE_URL}/tbl_user_preferences?usuario_id=eq.${currentUser.id}&select=status_vaga,cor_fundo_hex`, { headers });
+                const rows = await res.json();
+                if (Array.isArray(rows)) rows.forEach(r => colorPrefs[r.status_vaga] = r.cor_fundo_hex);
+            } catch(e) { console.error('Erro ao carregar cores de preferência:', e); }
+
+            Object.keys(STATUS_MAP).forEach(st => {
+                const defaultColor = getComputedStyle(document.documentElement).getPropertyValue(`--st-${st}`).trim();
+                const color = colorPrefs[STATUS_MAP[st]] || defaultColor;
+                document.documentElement.style.setProperty(`--st-${st}`, color);
+                document.getElementById(`pref-st-${st}`).value = color;
+            });
+
+            const defAv = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.usuario)}&background=0ea5e9&color=fff`;
+            const avUrl = currentUser.avatar_url || defAv;
+            document.getElementById('header-avatar').src = avUrl; document.getElementById('drawer-avatar-preview').src = avUrl;
+        }
+
+        function previewTheme(t) { if (t === 'light') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t); }
+        function previewFont(fontName) { document.documentElement.style.setProperty('--font-family', fontName); }
+
+        async function toggleEyeComfort() {
+            document.body.classList.toggle('eye-comfort');
+            const newVal = document.body.classList.contains('eye-comfort');
+            currentUser.eye_comfort = newVal;
+            sessionStorage.setItem('sla_user', JSON.stringify(currentUser));
+            try { await patchSupabase('usuarios', `id=eq.${currentUser.id}`, { eye_comfort: newVal }); }
+            catch(e) { console.error('Erro ao salvar conforto ocular:', e); }
+        }
+
+        function handleAvatarSelect(event) { const f = event.target.files[0]; if(f) { avatarFile = f; document.getElementById('avatarFileDisplay').innerHTML = `<i class="fas fa-check-circle" style="color:var(--success)"></i> S3 Ready`; const r = new FileReader(); r.onload = (e) => document.getElementById('drawer-avatar-preview').src = e.target.result; r.readAsDataURL(f); } }
+
+        async function savePreferences() {
+            const btn = document.getElementById('btnSavePrefs');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+            btn.disabled = true;
+
+            const userPayload = {
+                tema: document.getElementById('pref-theme').value,
+                fonte: document.getElementById('pref-font').value,
+                emoji_vitoria: document.getElementById('pref-emoji').value || null
+            };
+
+            if (avatarFile) {
+                try {
+                    // 1. Limpa e formata o nome do usuário para usar no arquivo
+                    const safeUsername = (currentUser.usuario || 'usuario').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+
+                    // 2. Busca na tabela de usuários o registro atual para ver se já existe uma foto/versão anterior
+                    const checkRes = await fetch(`${SUPABASE_URL}/usuarios?id=eq.${currentUser.id}&select=avatar_url`, { headers });
+                    const checkData = await checkRes.json();
+
+                    let versao = 1;
+                    if (checkData && checkData.length > 0 && checkData[0].avatar_url) {
+                        const oldUrl = checkData[0].avatar_url;
+                        const match = oldUrl.match(/_versao(\d+)\./);
+                        if (match && match[1]) versao = parseInt(match[1]) + 1;
+                    }
+
+                    // 3. Pega a extensão original do arquivo (jpg, png, etc)
+                    const fileExt = avatarFile.name.split('.').pop().toLowerCase() || 'jpg';
+                    const fName = `${safeUsername}_versao${versao}.${fileExt}`;
+
+                    // 4. Faz o upload para o S3 com o novo nome inteligente
+                    await s3Client.putObject({
+                        Bucket: 'pics_recs',
+                        Key: fName,
+                        Body: avatarFile,
+                        ContentType: avatarFile.type || 'image/jpeg'
+                    }).promise();
+
+                    userPayload.avatar_url = `https://ueicrehzfrwewgteqxvi.supabase.co/storage/v1/object/public/pics_recs/${fName}`;
+                } catch(e) {
+                    console.error("ERRO NO UPLOAD DO AVATAR:", e);
+                    showToast("Erro no upload da foto: " + e.message, true);
+                    btn.innerHTML = '<i class="fas fa-save"></i> Salvar Preferências';
+                    btn.disabled = false;
+                    return;
+                }
+            }
+
+            // 5. Grava tema/fonte/emoji (+avatar, se trocado) em uma única chamada na tabela usuarios.
+            // ATENÇÃO: se a policy de UPDATE do Supabase (RLS) não liberar o role "anon" para
+            // a tabela usuarios, este PATCH volta com array vazio (não é erro HTTP!), e o
+            // patchSupabase() abaixo transforma isso num erro de verdade em vez de falhar em silêncio.
+            try {
+                const updatedRow = await patchSupabase('usuarios', `id=eq.${currentUser.id}`, userPayload);
+
+                currentUser = { ...currentUser, ...updatedRow };
+                sessionStorage.setItem('sla_user', JSON.stringify(currentUser));
+
+                // Isso é o que impedia a foto/tema de atualizar no Chat e nos Cards de Desempenho
+                const uIdx = allUsers.findIndex(u => u.id === currentUser.id);
+                if (uIdx !== -1) allUsers[uIdx] = { ...allUsers[uIdx], ...updatedRow };
+
+                avatarFile = null;
+                document.getElementById('avatarFileDisplay').innerHTML = `<i class="fas fa-camera"></i> Trocar Foto (Upload S3)`;
+            } catch(e) {
+                console.error("ERRO AO SALVAR PREFERÊNCIAS DO USUÁRIO:", e);
+                showToast("Erro: " + e.message, true);
+                btn.innerHTML = '<i class="fas fa-save"></i> Salvar Preferências';
+                btn.disabled = false;
+                return;
+            }
+
+            // 6. Grava as cores por status via upsert em tbl_user_preferences
+            //    (usa o UNIQUE(usuario_id, status_vaga) já existente na tabela para
+            //    decidir entre INSERT ou UPDATE automaticamente).
+            const colorRows = Object.keys(STATUS_MAP).map(st => ({
+                usuario_id: currentUser.id,
+                status_vaga: STATUS_MAP[st],
+                cor_fundo_hex: document.getElementById(`pref-st-${st}`).value
+            }));
+            try {
+                const upsertRes = await fetch(`${SUPABASE_URL}/tbl_user_preferences?on_conflict=usuario_id,status_vaga`, {
+                    method: 'POST',
+                    headers: { ...headers, 'Prefer': 'resolution=merge-duplicates,return=representation' },
+                    body: JSON.stringify(colorRows)
+                });
+                if (!upsertRes.ok) {
+                    const err = await upsertRes.json().catch(() => null);
+                    throw new Error((err && err.message) || 'Falha ao salvar cores (verifique a RLS de tbl_user_preferences).');
+                }
+            } catch(e) {
+                console.error("ERRO AO SALVAR CORES:", e);
+                showToast("Preferências salvas, mas as cores por status não foram salvas: " + e.message, true);
+                btn.innerHTML = '<i class="fas fa-save"></i> Salvar Preferências';
+                btn.disabled = false;
+                return;
+            }
+
+            await loadPreferences();
+            document.getElementById('prefs-drawer').classList.remove('open');
+            btn.innerHTML = '<i class="fas fa-save"></i> Salvar Preferências';
+            btn.disabled = false;
+            showToast("Preferências Salvas!");
+            if(mainChart) updateDashboard();
+
+            // Recarrega os modais instantaneamente se eles estiverem abertos, aplicando a foto/cores novas.
+            if (document.getElementById('perfModal').classList.contains('active')) renderPerfCards();
+            if (document.getElementById('chat-drawer').classList.contains('open')) reloadChat();
+        }
+
+        function formatDataBR(isoStr) { if(!isoStr) return '-'; const parts = isoStr.split('-'); if(parts.length!==3) return isoStr; return `${parts[2]}/${parts[1]}/${parts[0]}`; }
+
+        const columnsConfig = [
+            { id: 'acoes', label: 'Opções', filterable: true, isAction: true },
+            { id: 'status_vaga', label: 'Status', filterable: true, sortable: true },
+            { id: 'current_sla', label: 'SLA (Dias)', filterable: false, sortable: true, isNumber: true },
+            { id: 'recrutadora_responsavel', label: 'Recrutadora', filterable: true, sortable: true },
+            { id: 'data_abertura_vaga', label: 'Abertura', filterable: true, isDate: true, sortable: true },
+            { id: 'diretor', label: 'Diretor', filterable: true, sortable: true },
+            { id: 'distrital', label: 'Distrital', filterable: true, sortable: true },
+            { id: 'coordenador', label: 'Coordenador', filterable: true, sortable: true },
+            { id: 'nome_filial_setor', label: 'Filial/Setor', filterable: true, sortable: true },
+            { id: 'cargo_vaga_setor', label: 'Cargo', filterable: true, sortable: true },
+            { id: 'nome_candidato', label: 'Candidato', filterable: true, sortable: true },
+            { id: 'curriculos', label: 'CVs', filterable: true, sortable: true, isNumber: true },
+            { id: 'matricula_candidato', label: 'Matrícula', filterable: true, sortable: true },
+            { id: 'data_admissao_candidato', label: 'Admissão', filterable: true, isDate: true, sortable: true },
+            { id: 'mailto_anexo_url', label: 'Anexo S3', filterable: false } 
+        ];
+
+        function buildTableHeaders() {
+            const tr = document.createElement('tr');
+            const thCheck = document.createElement('th');
+            thCheck.style.width = '36px';
+            thCheck.innerHTML = `<input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)">`;
+            tr.appendChild(thCheck);
+            columnsConfig.forEach(col => {
+                const th = document.createElement('th');
+                if(col.id === 'acoes') th.style.width = '140px'; 
+
+                const labelHtml = col.sortable
+                    ? `<span class="th-label-sortable" onclick="toggleSort('${col.id}')">${col.label}</span>`
+                    : `<span>${col.label}</span>`;
+                const sortIconHtml = col.sortable
+                    ? `<i class="fas fa-sort sort-icon" id="icon-sort-${col.id}" onclick="toggleSort('${col.id}')" title="Ordenar"></i>`
+                    : '';
+                
+                if(col.filterable) {
+                    th.innerHTML = `
+                        <div class="th-title-flex">${labelHtml}<div style="display:flex; align-items:center; gap:2px;">${sortIconHtml}<i class="fas fa-filter excel-filter-icon" id="icon-filter-${col.id}" onclick="toggleExcelFilter(event, '${col.id}')"></i></div></div>
+                        <div class="excel-filter-modal" id="modal-filter-${col.id}" onclick="event.stopPropagation()">
+                            <input type="text" class="excel-filter-search" placeholder="Pesquisar..." oninput="searchFilterList('${col.id}', this.value)">
+                            <div class="excel-filter-list" id="list-filter-${col.id}"></div>
+                            <div style="display:flex; justify-content:space-between; margin-top:10px; border-top:1px solid #cbd5e1; padding-top:10px;">
+                                <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem; border-color:#cbd5e1; color:#000;" onclick="applyColFilter('${col.id}')">OK</button>
+                                <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem; border-color:#cbd5e1; color:#ef4444;" onclick="clearColFilter('${col.id}')">Limpar</button>
+                            </div>
+                        </div>
+                    `;
+                } else if (col.sortable) {
+                    th.innerHTML = `<div class="th-title-flex">${labelHtml}${sortIconHtml}</div>`;
+                } else { th.innerText = col.label; }
+                tr.appendChild(th);
+            });
+            document.getElementById('table-head').innerHTML = ''; document.getElementById('table-head').appendChild(tr);
+            updateSortIcons();
+        }
+
+        // --- ORDENAÇÃO DE COLUNAS ---
+        let sortColumn = null;
+        let sortDirection = 'asc';
+
+        function toggleSort(colId) {
+            if (sortColumn === colId) {
+                if (sortDirection === 'asc') { sortDirection = 'desc'; }
+                else { sortColumn = null; sortDirection = 'asc'; } // terceiro clique remove a ordenação
+            } else {
+                sortColumn = colId; sortDirection = 'asc';
+            }
+            updateSortIcons();
+            processLocalData(true);
+        }
+
+        function updateSortIcons() {
+            columnsConfig.forEach(col => {
+                const icon = document.getElementById(`icon-sort-${col.id}`);
+                if (!icon) return;
+                if (sortColumn === col.id) {
+                    icon.className = `fas ${sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down'} sort-icon active`;
+                } else {
+                    icon.className = 'fas fa-sort sort-icon';
+                }
+            });
+        }
+
+        function setTabFilter(tabId) {
+            currentTabFilter = tabId;
+            ['todas', 'ativas', 'fechadas'].forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if(t === tabId) { btn.className = 'btn btn-primary'; btn.style.background = ''; btn.style.color = 'white'; } 
+                else { btn.className = 'btn'; btn.style.background = 'transparent'; btn.style.color = 'var(--text-muted)'; }
+            });
+            processLocalData(false);
+        }
+
+        // Aplica a aba atual + todos os filtros ativos, exceto o da coluna colExcluir.
+        // Usado tanto pra montar a tabela final (colExcluir = null) quanto pra montar
+        // as opções de CADA dropdown de filtro (que nunca se auto-restringe, só é
+        // restringido pelos OUTROS filtros já aplicados — igual ao Excel/Tabela Dinâmica).
+        function getFilteredBase(colExcluir) {
+            let baseData = getUserRawData();
+            if (currentTabFilter === 'ativas') { baseData = baseData.filter(v => !['Fechada', 'Cancelada', 'Desistência'].includes(v.status_vaga)); }
+            else if (currentTabFilter === 'fechadas') { baseData = baseData.filter(v => ['Fechada', 'Cancelada', 'Desistência'].includes(v.status_vaga)); }
+
+            return baseData.filter(v => {
+                for (let col in activeFilters) {
+                    if (col === 'acoes' || col === colExcluir) continue;
+                    const selectedVals = activeFilters[col];
+                    let rowVal = v[col]; if (columnsConfig.find(c => c.id === col).isDate) rowVal = formatDataBR(rowVal);
+                    if (!selectedVals.includes((rowVal || '-').toString())) return false;
+                }
+                return true;
+            });
+        }
+
+        function toggleExcelFilter(e, colId) {
+            e.stopPropagation(); const modal = document.getElementById(`modal-filter-${colId}`); const isOpen = modal.classList.contains('open'); document.querySelectorAll('.excel-filter-modal').forEach(m => m.classList.remove('open'));
+            if(!isOpen) {
+                const list = document.getElementById(`list-filter-${colId}`);
+                // Base pra ESTE dropdown: aplica os outros filtros já ativos (não o dele mesmo) —
+                // assim, filtrar Coordenador já limita o que aparece pra Diretor, Filial, etc.
+                let vals = getFilteredBase(colId).map(v => { if(colId === 'acoes') return 'Ações'; let val = v[colId]; if(columnsConfig.find(c=>c.id===colId).isDate) val = formatDataBR(val); return val || '-'; });
+                let uniqueValues = [...new Set(vals)].sort(); let html = '';
+                uniqueValues.forEach(val => { const isChecked = activeFilters[colId] && activeFilters[colId].includes(val) ? 'checked' : ''; html += `<label class="excel-filter-label" data-text="${val.toString().toLowerCase()}"><input type="checkbox" value="${val}" ${isChecked}> ${val}</label>`; });
+                if(uniqueValues.length===0) html = '<div style="font-size:0.8rem; color:#64748b;">Sem dados com os outros filtros aplicados</div>';
+                list.innerHTML = html; modal.classList.add('open');
+            }
+        }
+        function searchFilterList(colId, term) { term = term.toLowerCase(); document.querySelectorAll(`#list-filter-${colId} .excel-filter-label`).forEach(lbl => { lbl.style.display = lbl.getAttribute('data-text').includes(term) ? 'flex' : 'none'; }); }
+        function applyColFilter(colId) {
+            const checks = document.querySelectorAll(`#list-filter-${colId} input[type="checkbox"]:checked`); const selected = Array.from(checks).map(cb => cb.value);
+            if(selected.length > 0) { activeFilters[colId] = selected; document.getElementById(`icon-filter-${colId}`).classList.add('active'); } 
+            else { delete activeFilters[colId]; document.getElementById(`icon-filter-${colId}`).classList.remove('active'); }
+            document.getElementById(`modal-filter-${colId}`).classList.remove('open'); processLocalData(true);
+        }
+        function clearColFilter(colId) { delete activeFilters[colId]; document.getElementById(`icon-filter-${colId}`).classList.remove('active'); document.getElementById(`modal-filter-${colId}`).classList.remove('open'); processLocalData(true); }
+        function clearAllFilters() { activeFilters = {}; document.querySelectorAll('.excel-filter-icon').forEach(i => i.classList.remove('active')); processLocalData(true); }
+
+        // Painel mobile de escolha de coluna — reaproveita o MESMO toggleExcelFilter()
+        // que o desktop usa (mesma lógica de filtro cruzado), só muda como se chega até ele.
+        function abrirEscolhaFiltroMobile() {
+            const list = document.getElementById('mobileFiltroColunaList');
+            list.innerHTML = columnsConfig.filter(c => c.filterable && c.id !== 'acoes').map(c => {
+                const ativo = activeFilters[c.id] ? ` <span style="color:var(--primary); font-weight:800;">(${activeFilters[c.id].length})</span>` : '';
+                return `<button class="btn btn-secondary" style="justify-content:space-between; padding:14px 16px;" onclick="event.stopPropagation(); document.getElementById('mobileFiltroColunaModal').classList.remove('active'); toggleExcelFilter({stopPropagation:()=>{}}, '${c.id}');">${c.label}${ativo} <i class="fas fa-chevron-right"></i></button>`;
+            }).join('');
+            document.getElementById('mobileFiltroColunaModal').classList.add('active');
+        }
+
+        async function loadVagas(isFirstLoad) {
+            try {
+                const res = await fetch(`${SUPABASE_URL}/vagas?select=*&limit=10000&order=created_at.desc`, { headers }); const newData = await res.json();
+                const today = new Date().toISOString().split('T')[0];
+                newData.forEach(v => {
+                    v.current_sla = 0;
+                    // Se a vaga já foi transferida entre recrutadoras, o SLA conta a partir da
+                    // data em que a dona ATUAL a recebeu (data_inicio_sla_atual), não da abertura
+                    // original — assim ninguém herda o atraso de quem tinha a vaga antes.
+                    const inicioSla = v.data_inicio_sla_atual || v.data_inicio_trabalho;
+                    if (inicioSla) {
+                        let endDate = today; if (['Fechada', 'Cancelada', 'Desistência'].includes(v.status_vaga) && v.data_fechamento) endDate = v.data_fechamento;
+                        let count = 0; let cur = new Date(inicioSla); const end = new Date(endDate);
+                        while (cur <= end) { if (cur.getDay() !== 0 && cur.getDay() !== 6) count++; cur.setDate(cur.getDate() + 1); }
+                        v.current_sla = count;
+                    }
+                });
+                rawData = newData; processLocalData(!isFirstLoad); processNotifications(isFirstLoad);
+            } catch(e) {}
+        }
+
+        function processLocalData(silent = false) {
+            filteredData = getFilteredBase(null);
+
+            if (sortColumn) {
+                const colCfg = columnsConfig.find(c => c.id === sortColumn);
+                filteredData.sort((a, b) => {
+                    let va = a[sortColumn]; let vb = b[sortColumn];
+                    if (colCfg && colCfg.isNumber) { va = Number(va) || 0; vb = Number(vb) || 0; }
+                    else if (colCfg && colCfg.isDate) { va = va ? new Date(va).getTime() : 0; vb = vb ? new Date(vb).getTime() : 0; }
+                    else { va = (va || '').toString().toLowerCase(); vb = (vb || '').toString().toLowerCase(); }
+                    if (va < vb) return sortDirection === 'asc' ? -1 : 1;
+                    if (va > vb) return sortDirection === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            document.getElementById('kpi-total').innerText = filteredData.length;
+            document.getElementById('kpi-fechadas').innerText = filteredData.filter(v => v.status_vaga === 'Fechada').length;
+            document.getElementById('kpi-admissao').innerText = filteredData.filter(v => v.status_vaga === 'Aguardando Admissão').length;
+            let sumSla = 0; filteredData.forEach(v => sumSla += (v.current_sla||0));
+            document.getElementById('kpi-sla-medio').innerText = filteredData.length > 0 ? (sumSla/filteredData.length).toFixed(1) : "0.0";
+            
+            renderGrid(silent);
+        }
+
+        function getStatusClass(status) { switch(status) { case 'Fechada': return 'st-fechada'; case 'Stand-by': return 'st-standby'; case 'Cancelada': return 'st-cancelada'; case 'Desistência': return 'st-desistencia'; case 'Aguardando Admissão': return 'st-admissao'; default: return 'st-aberta'; } }
+
+        function renderGrid(silent) {
+            const tbody = document.getElementById('grid-body'); const scrollPos = silent ? document.querySelector('.table-container').scrollTop : 0;
+            let html = '';
+            filteredData.forEach(row => {
+                let slaColor = 'var(--text-main)';
+                if (!['Fechada', 'Cancelada', 'Desistência'].includes(row.status_vaga)) { if (row.current_sla > row.meta_sla) slaColor = 'var(--danger)'; else if (row.current_sla >= (row.meta_sla * 0.8)) slaColor = 'var(--warning)'; else slaColor = 'var(--success)'; }
+
+                html += `
+                    <tr id="tr-${row.id}" ondblclick="openVagaCard('${row.id}')" style="cursor:pointer;" title="Duplo clique para abrir Card da Vaga">
+                        <td data-label="Selecionar" onclick="event.stopPropagation()"><input type="checkbox" class="rowCheckbox" data-id="${row.id}" ${selectedVagas.has(row.id) ? 'checked' : ''} onchange="toggleSelectRow('${row.id}', this.checked)"></td>
+                        <td data-label="Opções" style="display:flex; gap:5px;">
+                            <button class="btn btn-secondary" style="padding: 6px 10px; font-size: 0.8rem;" onclick="openVagaCard(event, '${row.id}')" title="Card Visual"><i class="fas fa-id-card"></i></button>
+                            <button class="btn btn-primary" style="padding: 6px 10px; font-size: 0.8rem;" onclick="openActionModal(event, '${row.id}')" title="Ações da Vaga"><i class="fas fa-cog"></i></button>
+                            <button class="btn btn-secondary" style="padding: 6px 10px; font-size: 0.8rem;" onclick="openChat(event, '${row.id}')" title="Chat"><i class="fas fa-comments"></i></button>
+                        </td>
+                        <td data-label="Status"><span class="status-badge ${getStatusClass(row.status_vaga)}">${row.status_vaga || 'Aberta'}</span></td>
+                        <td data-label="SLA (Dias)" style="font-weight:bold; color: ${slaColor}">${row.current_sla || 0} / ${row.meta_sla || '-'}</td>
+                        <td data-label="Recrutadora">${row.recrutadora_responsavel || '-'}</td>
+                        <td data-label="Abertura">${formatDataBR(row.data_abertura_vaga || row.data_solicitacao)}</td>
+                        <td data-label="Diretor">${row.diretor || '-'}</td>
+                        <td data-label="Distrital">${row.distrital || '-'}</td>
+                        <td data-label="Coordenador">${row.coordenador || '-'}</td>
+                        <td data-label="Filial/Setor">${row.nome_filial_setor || '-'}</td>
+                        <td data-label="Cargo">${row.cargo_vaga_setor || '-'}</td>
+                        <td data-label="Candidato">${row.nome_candidato || '-'}</td>
+                        <td data-label="CVs">
+                            <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                                <button class="btn btn-secondary" style="padding: 2px 6px; font-size: 0.7rem;" onclick="addCV(event, '${row.id}', ${row.curriculos||0}, -1)" title="Remover"><i class="fas fa-minus"></i></button>
+                                <span style="font-weight:bold; color:var(--primary); font-size:1rem; min-width: 15px; text-align:center;">${row.curriculos || 0}</span>
+                                <button class="btn btn-secondary" style="padding: 2px 6px; font-size: 0.7rem;" onclick="addCV(event, '${row.id}', ${row.curriculos||0}, 1)" title="Adicionar"><i class="fas fa-plus"></i></button>
+                            </div>
+                        </td>
+                        <td data-label="Matrícula">${row.matricula_candidato || '-'}</td>
+                        <td data-label="Admissão">${formatDataBR(row.data_admissao_candidato)}</td>
+                        <td data-label="Anexo S3">${row.mailto_anexo_url ? `<a href="${row.mailto_anexo_url}" target="_blank" onclick="event.stopPropagation()" class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;"><i class="fas fa-paperclip"></i> Ver</a>` : '-'}</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+            if(silent) document.querySelector('.table-container').scrollTop = scrollPos;
+        }
+
+
+        // --- SELEÇÃO DE VAGAS NA TABELA ---
+        function toggleSelectRow(id, checked) {
+            if (checked) selectedVagas.add(id); else selectedVagas.delete(id);
+            updateBulkBar();
+        }
+        function toggleSelectAll(checked) {
+            filteredData.forEach(v => { if (checked) selectedVagas.add(v.id); else selectedVagas.delete(v.id); });
+            renderGrid(true); updateBulkBar();
+        }
+        function clearSelection() {
+            selectedVagas.clear();
+            const selectAll = document.getElementById('selectAllCheckbox'); if (selectAll) selectAll.checked = false;
+            renderGrid(true); updateBulkBar();
+        }
+        function updateBulkBar() {
+            const bar = document.getElementById('bulkBar');
+            if (selectedVagas.size > 0) { bar.style.display = 'flex'; document.getElementById('bulkCount').innerText = selectedVagas.size; }
+            else { bar.style.display = 'none'; }
+        }
+
+        // --- PROPRIEDADE E TRANSFERÊNCIA ---
+
+        // Assumir uma vaga sem dono (livre, sem aprovação) — só é possível se a vaga
+        // já está visível pra mim (grupo aberto, meu grupo, ou sem grupo nenhum).
+        async function assumirVaga(id) {
+            const vaga = rawData.find(v => v.id === id);
+            if (!vaga) return;
+            try {
+                await patchSupabase('vagas', `id=eq.${id}`, { recrutadora_responsavel: currentUser.usuario });
+                showToast('Vaga atribuída a você!');
+                document.getElementById('actionModal').classList.remove('active');
+                loadVagas(false);
+            } catch(e) { showToast('Erro ao assumir vaga: ' + e.message, true); }
+        }
+
+        function preencherSelectUsuarios(selectEl, excluirUsuarioId) {
+            selectEl.innerHTML = allUsers
+                .filter(u => u.id !== excluirUsuarioId)
+                .map(u => `<option value="${u.id}">${u.usuario}</option>`)
+                .join('');
+        }
+
+        // Abre o modal de transferência. Se targetId for null, é uma transferência em massa
+        // (usa a barra de seleção); senão é a transferência de uma única vaga específica.
+        let transferSingleVagaId = null;
+        function openTransferModal(vagaId) {
+            transferSingleVagaId = vagaId;
+            const ids = vagaId ? [vagaId] : Array.from(selectedVagas);
+            if (ids.length === 0) { showToast('Selecione ao menos uma vaga.', true); return; }
+            document.getElementById('actionModal').classList.remove('active');
+            preencherSelectUsuarios(document.getElementById('transferAlvoSelect'), currentUser.id);
+            document.getElementById('transferMotivo').value = '';
+            document.getElementById('transferHint').innerText = isUserAdmin(currentUser)
+                ? 'Como administrador, a transferência é feita direto, sem precisar de aprovação.'
+                : 'Transferência para alguém do mesmo grupo da vaga é direta. Para fora do grupo, vira uma solicitação para aprovação.';
+            document.getElementById('transferModal').classList.add('active');
+        }
+
+        async function confirmarTransferencia() {
+            const ids = transferSingleVagaId ? [transferSingleVagaId] : Array.from(selectedVagas);
+            const alvoId = document.getElementById('transferAlvoSelect').value;
+            const alvoUser = allUsers.find(u => u.id === alvoId);
+            const motivo = document.getElementById('transferMotivo').value.trim();
+            if (!alvoUser) { showToast('Escolha uma recrutadora de destino.', true); return; }
+
+            const btn = document.getElementById('btnConfirmTransfer');
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+
+            let diretas = 0, solicitadas = 0, erros = 0;
+            for (const id of ids) {
+                const vaga = rawData.find(v => v.id === id);
+                if (!vaga) continue;
+                const admin = isUserAdmin(currentUser);
+                // Transferência livre: sou admin, OU a vaga tem um grupo definido e tanto eu quanto
+                // o alvo somos membros desse grupo.
+                const alvoGrupos = getUserGroupNames(alvoUser);
+                const mesmoGrupoLivre = !admin && vaga.grupo_atribuido &&
+                    getUserGroupNames(currentUser).includes(vaga.grupo_atribuido) &&
+                    alvoGrupos.includes(vaga.grupo_atribuido);
+
+                try {
+                    if (admin || mesmoGrupoLivre) {
+                        await patchSupabase('vagas', `id=eq.${id}`, { recrutadora_responsavel: alvoUser.usuario });
+                        diretas++;
+                    } else {
+                        const res = await fetch(`${SUPABASE_URL}/solicitacoes_vaga`, {
+                            method: 'POST', headers,
+                            body: JSON.stringify({ vaga_id: id, tipo: 'transferencia', solicitante_id: currentUser.id, alvo_usuario_id: alvoId, motivo: motivo || null })
+                        });
+                        if (!res.ok) throw new Error('Falha ao criar solicitação.');
+                        solicitadas++;
+                    }
+                } catch(e) { console.error(e); erros++; }
+            }
+
+            btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Confirmar';
+            document.getElementById('transferModal').classList.remove('active');
+            clearSelection();
+            let msg = [];
+            if (diretas > 0) msg.push(`${diretas} transferida(s) direto`);
+            if (solicitadas > 0) msg.push(`${solicitadas} enviada(s) para aprovação`);
+            if (erros > 0) msg.push(`${erros} com erro`);
+            showToast(msg.join(' · ') || 'Nada foi processado.', erros > 0);
+            loadVagas(false);
+        }
+
+        // Ação em massa: exclusão ou propriedade (sempre viram solicitação, exceto se eu for admin)
+        async function bulkAction(tipo) {
+            const ids = Array.from(selectedVagas);
+            if (ids.length === 0) { showToast('Selecione ao menos uma vaga.', true); return; }
+            const admin = isUserAdmin(currentUser);
+            let motivo = null;
+            if (!admin) {
+                motivo = prompt(tipo === 'exclusao' ? 'Motivo da exclusão:' : 'Motivo do pedido de propriedade:');
+                if (motivo === null) return; // cancelou
+            } else if (tipo === 'exclusao') {
+                if (!confirm(`Confirma a exclusão de ${ids.length} vaga(s)? Essa ação não pode ser desfeita.`)) return;
+            }
+
+            let ok = 0, erros = 0;
+            for (const id of ids) {
+                try {
+                    if (admin) {
+                        if (tipo === 'exclusao') {
+                            const res = await fetch(`${SUPABASE_URL}/vagas?id=eq.${id}`, { method: 'DELETE', headers });
+                            if (!res.ok) throw new Error('Falha ao excluir.');
+                        } else {
+                            await patchSupabase('vagas', `id=eq.${id}`, { recrutadora_responsavel: currentUser.usuario });
+                        }
+                    } else {
+                        const res = await fetch(`${SUPABASE_URL}/solicitacoes_vaga`, {
+                            method: 'POST', headers,
+                            body: JSON.stringify({ vaga_id: id, tipo: tipo, solicitante_id: currentUser.id, motivo: motivo || null })
+                        });
+                        if (!res.ok) throw new Error('Falha ao criar solicitação.');
+                    }
+                    ok++;
+                } catch(e) { console.error(e); erros++; }
+            }
+            clearSelection();
+            showToast(`${ok} processada(s)${erros > 0 ? `, ${erros} com erro` : ''}${!admin ? ' — aguardando aprovação' : ''}.`, erros > 0);
+            loadVagas(false);
+        }
+
+        // --- TRANSFERÊNCIA POR PERÍODO (FÉRIAS) ---
+        function openPeriodoModal() {
+            const origemSelect = document.getElementById('periodoOrigemSelect');
+            const destinoSelect = document.getElementById('periodoDestinoSelect');
+            const admin = isUserAdmin(currentUser);
+            if (admin) {
+                origemSelect.innerHTML = allUsers.map(u => `<option value="${u.id}">${u.usuario}</option>`).join('');
+                origemSelect.disabled = false;
+            } else {
+                origemSelect.innerHTML = `<option value="${currentUser.id}">${currentUser.usuario} (você)</option>`;
+                origemSelect.disabled = true;
+            }
+            preencherSelectUsuarios(destinoSelect, origemSelect.value);
+            document.getElementById('periodoInicio').value = '';
+            document.getElementById('periodoFim').value = '';
+            document.getElementById('periodoMotivo').value = '';
+            document.getElementById('periodoModal').classList.add('active');
+        }
+
+        async function confirmarPeriodo() {
+            const origemId = document.getElementById('periodoOrigemSelect').value;
+            const destinoId = document.getElementById('periodoDestinoSelect').value;
+            const inicio = document.getElementById('periodoInicio').value;
+            const fim = document.getElementById('periodoFim').value;
+            const motivo = document.getElementById('periodoMotivo').value.trim();
+            if (!origemId || !destinoId || origemId === destinoId) { showToast('Escolha origem e destino diferentes.', true); return; }
+            if (!inicio || !fim) { showToast('Preencha o período.', true); return; }
+
+            const admin = isUserAdmin(currentUser);
+            const payload = {
+                recrutadora_origem_id: origemId, recrutadora_destino_id: destinoId,
+                data_inicio: inicio, data_fim: fim, motivo: motivo || null,
+                solicitante_id: currentUser.id
+            };
+
+            try {
+                if (admin) {
+                    payload.status = 'Aprovada'; payload.respondido_por = currentUser.id; payload.respondido_em = new Date().toISOString();
+                    const res = await fetch(`${SUPABASE_URL}/transferencias_periodo`, { method: 'POST', headers, body: JSON.stringify(payload) });
+                    if (!res.ok) throw new Error('Falha ao registrar.');
+                    await aplicarTransferenciaPeriodo(origemId, destinoId);
+                    showToast('Transferência por período aplicada!');
+                } else {
+                    const res = await fetch(`${SUPABASE_URL}/transferencias_periodo`, { method: 'POST', headers, body: JSON.stringify(payload) });
+                    if (!res.ok) throw new Error('Falha ao enviar solicitação.');
+                    showToast('Solicitação enviada — aguardando aprovação de um administrador.');
+                }
+                document.getElementById('periodoModal').classList.remove('active');
+                loadVagas(false);
+            } catch(e) { showToast('Erro: ' + e.message, true); }
+        }
+
+        async function aplicarTransferenciaPeriodo(origemId, destinoId) {
+            const origemUser = allUsers.find(u => u.id === origemId);
+            const destinoUser = allUsers.find(u => u.id === destinoId);
+            if (!origemUser || !destinoUser) return;
+            const res = await fetch(`${SUPABASE_URL}/vagas?recrutadora_responsavel=eq.${encodeURIComponent(origemUser.usuario)}`, {
+                method: 'PATCH', headers, body: JSON.stringify({ recrutadora_responsavel: destinoUser.usuario })
+            });
+            if (!res.ok) throw new Error('Falha ao transferir as vagas do período.');
+        }
+
+        // --- CENTRAL DE SOLICITAÇÕES (ADMINISTRADOR) ---
+        async function refreshSolicBadge() {
+            try {
+                const [r1, r2] = await Promise.all([
+                    fetch(`${SUPABASE_URL}/solicitacoes_vaga?status=eq.Pendente&select=id`, { headers }),
+                    fetch(`${SUPABASE_URL}/transferencias_periodo?status=eq.Pendente&select=id`, { headers })
+                ]);
+                const d1 = await r1.json(); const d2 = await r2.json();
+                const total = (Array.isArray(d1) ? d1.length : 0) + (Array.isArray(d2) ? d2.length : 0);
+                const badge = document.getElementById('solicBadge');
+                if (total > 0) { badge.style.display = 'inline-block'; badge.innerText = total; } else { badge.style.display = 'none'; }
+            } catch(e) { console.error('Erro ao checar solicitações pendentes', e); }
+        }
+
+        async function openSolicitacoesModal() {
+            document.getElementById('solicitacoesModal').classList.add('active');
+            const list = document.getElementById('solicitacoesList');
+            list.innerHTML = '<p style="color:var(--text-muted); text-align:center;">Carregando...</p>';
+            try {
+                const [r1, r2] = await Promise.all([
+                    fetch(`${SUPABASE_URL}/solicitacoes_vaga?status=eq.Pendente&order=created_at.desc`, { headers }),
+                    fetch(`${SUPABASE_URL}/transferencias_periodo?status=eq.Pendente&order=created_at.desc`, { headers })
+                ]);
+                const solicitacoes = await r1.json();
+                const periodos = await r2.json();
+                let html = '';
+
+                const tipoLabel = { exclusao: 'Solicitação de Exclusão', propriedade: 'Solicitação de Propriedade', transferencia: 'Solicitação de Transferência' };
+                const tipoIcon = { exclusao: 'fa-trash', propriedade: 'fa-hand-paper', transferencia: 'fa-exchange-alt' };
+
+                (Array.isArray(solicitacoes) ? solicitacoes : []).forEach(s => {
+                    const vaga = rawData.find(v => v.id === s.vaga_id);
+                    const solicitante = allUsers.find(u => u.id === s.solicitante_id);
+                    const alvo = allUsers.find(u => u.id === s.alvo_usuario_id);
+                    html += `
+                    <div class="kpi-card" style="padding:16px;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                            <div>
+                                <div style="font-weight:800; color:var(--text-main);"><i class="fas ${tipoIcon[s.tipo]}"></i> ${tipoLabel[s.tipo]}</div>
+                                <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">Vaga: ${vaga ? vaga.cargo_vaga_setor + ' — ' + vaga.nome_filial_setor : '(vaga não encontrada)'}</div>
+                                <div style="font-size:0.85rem; color:var(--text-muted);">Solicitado por: ${solicitante ? solicitante.usuario : '-'}${alvo ? ' → para ' + alvo.usuario : ''}</div>
+                                ${s.motivo ? `<div style="font-size:0.85rem; color:var(--text-main); margin-top:6px; font-style:italic;">"${s.motivo}"</div>` : ''}
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="btn btn-primary" style="padding:8px 14px; font-size:0.8rem;" onclick="responderSolicitacao('${s.id}', true)"><i class="fas fa-check"></i> Aprovar</button>
+                            <button class="btn btn-danger" style="padding:8px 14px; font-size:0.8rem;" onclick="responderSolicitacao('${s.id}', false)"><i class="fas fa-times"></i> Rejeitar</button>
+                        </div>
+                    </div>`;
+                });
+
+                (Array.isArray(periodos) ? periodos : []).forEach(p => {
+                    const origem = allUsers.find(u => u.id === p.recrutadora_origem_id);
+                    const destino = allUsers.find(u => u.id === p.recrutadora_destino_id);
+                    html += `
+                    <div class="kpi-card" style="padding:16px; border-left-color: var(--warning);">
+                        <div style="font-weight:800; color:var(--text-main);"><i class="fas fa-plane-departure"></i> Transferência por Período</div>
+                        <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${origem ? origem.usuario : '-'} → ${destino ? destino.usuario : '-'}</div>
+                        <div style="font-size:0.85rem; color:var(--text-muted);">${formatDataBR(p.data_inicio)} até ${formatDataBR(p.data_fim)}</div>
+                        ${p.motivo ? `<div style="font-size:0.85rem; color:var(--text-main); margin-top:6px; font-style:italic;">"${p.motivo}"</div>` : ''}
+                        <div style="display:flex; gap:8px; margin-top:10px;">
+                            <button class="btn btn-primary" style="padding:8px 14px; font-size:0.8rem;" onclick="responderPeriodo('${p.id}', true)"><i class="fas fa-check"></i> Aprovar</button>
+                            <button class="btn btn-danger" style="padding:8px 14px; font-size:0.8rem;" onclick="responderPeriodo('${p.id}', false)"><i class="fas fa-times"></i> Rejeitar</button>
+                        </div>
+                    </div>`;
+                });
+
+                list.innerHTML = html || '<p style="color:var(--text-muted); text-align:center;">Nenhuma solicitação pendente.</p>';
+            } catch(e) { list.innerHTML = '<p style="color:var(--danger); text-align:center;">Erro ao carregar solicitações.</p>'; }
+        }
+
+        async function responderSolicitacao(id, aprovar) {
+            try {
+                const res = await fetch(`${SUPABASE_URL}/solicitacoes_vaga?id=eq.${id}&select=*`, { headers });
+                const rows = await res.json();
+                const s = rows[0];
+                if (!s) return;
+
+                if (aprovar) {
+                    if (s.tipo === 'exclusao') {
+                        await fetch(`${SUPABASE_URL}/vagas?id=eq.${s.vaga_id}`, { method: 'DELETE', headers });
+                    } else if (s.tipo === 'propriedade') {
+                        const solicitante = allUsers.find(u => u.id === s.solicitante_id);
+                        if (solicitante) await patchSupabase('vagas', `id=eq.${s.vaga_id}`, { recrutadora_responsavel: solicitante.usuario });
+                    } else if (s.tipo === 'transferencia') {
+                        const alvo = allUsers.find(u => u.id === s.alvo_usuario_id);
+                        if (alvo) await patchSupabase('vagas', `id=eq.${s.vaga_id}`, { recrutadora_responsavel: alvo.usuario });
+                    }
+                }
+                await patchSupabase('solicitacoes_vaga', `id=eq.${id}`, { status: aprovar ? 'Aprovada' : 'Rejeitada', respondido_por: currentUser.id, respondido_em: new Date().toISOString() });
+                showToast(aprovar ? 'Solicitação aprovada!' : 'Solicitação rejeitada.');
+                openSolicitacoesModal(); refreshSolicBadge(); loadVagas(false);
+            } catch(e) { showToast('Erro: ' + e.message, true); }
+        }
+
+        async function responderPeriodo(id, aprovar) {
+            try {
+                const res = await fetch(`${SUPABASE_URL}/transferencias_periodo?id=eq.${id}&select=*`, { headers });
+                const rows = await res.json();
+                const p = rows[0];
+                if (!p) return;
+                if (aprovar) await aplicarTransferenciaPeriodo(p.recrutadora_origem_id, p.recrutadora_destino_id);
+                await patchSupabase('transferencias_periodo', `id=eq.${id}`, { status: aprovar ? 'Aprovada' : 'Rejeitada', respondido_por: currentUser.id, respondido_em: new Date().toISOString() });
+                showToast(aprovar ? 'Transferência aplicada!' : 'Solicitação rejeitada.');
+                openSolicitacoesModal(); refreshSolicBadge(); loadVagas(false);
+            } catch(e) { showToast('Erro: ' + e.message, true); }
+        }
+
+        // --- GESTÃO DE GRUPOS DE RECRUTAMENTO (ADMINISTRADOR) ---
+        async function openGruposModal() {
+            await loadGrupos();
+            renderGruposList();
+            const sel = document.getElementById('grupoUsuarioSelect');
+            sel.innerHTML = allUsers.map(u => `<option value="${u.id}">${u.usuario}</option>`).join('');
+            carregarGruposDoUsuario();
+            document.getElementById('gruposModal').classList.add('active');
+        }
+
+        function renderGruposList() {
+            const list = document.getElementById('gruposList');
+            list.innerHTML = allGroups.map(g => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:var(--bg-base); border:1px solid var(--border-color); border-radius:10px;">
+                    <span style="color:var(--text-main); font-weight:600;">${g.nome} ${g.is_admin ? '<span style="color:var(--danger); font-size:0.7rem; font-weight:800;">ADMIN</span>' : ''}</span>
+                    ${g.somenteLeitura ? '<span style="font-size:0.7rem; color:var(--text-muted);"><i class="fas fa-store"></i> vem da filial</span>' : ''}
+                </div>`).join('') || '<p style="color:var(--text-muted); font-size:0.85rem;">Nenhum grupo encontrado ainda — preencha a coluna grupos_recrutamento na tabela_heart_fact.</p>';
+        }
+
+        function carregarGruposDoUsuario() {
+            const userId = document.getElementById('grupoUsuarioSelect').value;
+            const user = allUsers.find(u => u.id === userId);
+            const meusGrupos = getUserGroupNames(user);
+            const box = document.getElementById('grupoUsuarioCheckboxes');
+            box.innerHTML = allGroups.map(g => `
+                <label style="display:flex; align-items:center; gap:6px; background:var(--bg-base); border:1px solid var(--border-color); padding:6px 12px; border-radius:20px; cursor:pointer; font-size:0.85rem; color:var(--text-main);">
+                    <input type="checkbox" value="${g.nome}" ${meusGrupos.includes(g.nome) ? 'checked' : ''}> ${g.nome}
+                </label>`).join('');
+        }
+
+        async function salvarGruposDoUsuario() {
+            const userId = document.getElementById('grupoUsuarioSelect').value;
+            const checked = Array.from(document.querySelectorAll('#grupoUsuarioCheckboxes input:checked')).map(c => c.value);
+            try {
+                const updated = await patchSupabase('usuarios', `id=eq.${userId}`, { grupos_recrutamento: checked.join(';') });
+                const idx = allUsers.findIndex(u => u.id === userId);
+                if (idx !== -1) allUsers[idx] = { ...allUsers[idx], ...updated };
+                if (currentUser.id === userId) { currentUser = { ...currentUser, ...updated }; sessionStorage.setItem('sla_user', JSON.stringify(currentUser)); atualizarVisibilidadeAdmin(); }
+                showToast('Grupos salvos!');
+            } catch(e) { showToast('Erro: ' + e.message, true); }
+        }
+
+        async function addCV(e, id, currentCount, delta) {
+            e.stopPropagation();
+            let newVal = currentCount + delta; if(newVal < 0) newVal = 0;
+            const target = rawData.find(v => v.id == id); if(target) target.curriculos = newVal;
+            processLocalData(true); 
+            try { await patchSupabase('vagas', `id=eq.${id}`, { curriculos: newVal }); } 
+            catch(err) { if(target) target.curriculos = currentCount; processLocalData(true); showToast("Erro ao salvar currículo: " + err.message, true); }
+        }
+
+        function vagaBannerClass(status) {
+            switch(status) { case 'Fechada': return 'vc-banner-fechada'; case 'Stand-by': return 'vc-banner-standby'; case 'Cancelada': return 'vc-banner-cancelada'; case 'Desistência': return 'vc-banner-desistencia'; case 'Aguardando Admissão': return 'vc-banner-admissao'; default: return 'vc-banner-aberta'; }
+        }
+
+        function openVagaCard(e_or_id, id_param) {
+            if(typeof e_or_id === 'object') e_or_id.stopPropagation(); 
+            const id = id_param || e_or_id; selectedVaga = rawData.find(x => x.id == id);
+            const v = selectedVaga;
+            const status = v.status_vaga || 'Aberta';
+            const isFinalizada = ['Fechada', 'Cancelada', 'Desistência'].includes(status);
+
+            // Banner colorido conforme o status
+            const banner = document.getElementById('vcBanner');
+            banner.className = 'vc-banner ' + vagaBannerClass(status);
+            document.getElementById('vcBadge').innerText = status;
+            document.getElementById('vcCargo').innerText = v.cargo_vaga_setor || '-';
+            document.getElementById('vcFilial').innerText = v.nome_filial_setor || '-';
+
+            // Anel de progresso do SLA
+            const meta = v.meta_sla || 0;
+            const atual = v.current_sla || 0;
+            const pct = meta > 0 ? Math.min(atual / meta, 1) : 0;
+            const circunf = 150.8; // 2 * PI * 24
+            document.getElementById('vcSlaRingFg').setAttribute('stroke-dashoffset', (circunf * (1 - pct)).toFixed(1));
+            document.getElementById('vcSlaRingText').innerText = `${atual}d`;
+            document.getElementById('vcSlaText').innerText = `${atual} / ${meta || '-'} dias úteis`;
+            document.getElementById('vcSlaWrap').style.display = isFinalizada ? 'none' : 'flex';
+
+            // Chips de informação
+            const chip = (label, value, icon, full) => `
+                <div class="vc-chip ${full ? 'vc-chip-full' : ''}">
+                    <div class="vc-chip-label"><i class="fas ${icon}"></i> ${label}</div>
+                    <div class="vc-chip-value">${value || '-'}</div>
+                </div>`;
+            document.getElementById('vcDetails').innerHTML =
+                chip('Recrutadora', v.recrutadora_responsavel, 'fa-user-tie') +
+                chip('Data Abertura', formatDataBR(v.data_abertura_vaga || v.data_solicitacao), 'fa-calendar-day') +
+                chip('Solicitante', v.nome_solicitante, 'fa-user') +
+                chip('Diretor', v.diretor, 'fa-building') +
+                chip('Coordenador', v.coordenador, 'fa-users') +
+                chip('Currículos Recebidos', v.curriculos || 0, 'fa-file-alt');
+
+            // Box do candidato (só aparece se já tiver candidato vinculado)
+            const candBox = document.getElementById('vcCandidatoBox');
+            if (v.nome_candidato) {
+                candBox.style.display = 'flex';
+                document.getElementById('vcCandidatoAvatar').innerText = v.nome_candidato.substring(0, 2).toUpperCase();
+                document.getElementById('vcCandidatoNome').innerText = v.nome_candidato;
+                document.getElementById('vcCandidatoMatricula').innerText = v.matricula_candidato ? `Matrícula: ${v.matricula_candidato}` : 'Sem matrícula ainda';
+            } else {
+                candBox.style.display = 'none';
+            }
+
+            // Face expandida: todas as informações extras coletadas no formulário
+            const chipIf = (label, value, icon, full) => value ? chip(label, value, icon, full) : '';
+            let entrevistadorInfo = v.responsavel_entrevista || '';
+            if (v.responsavel_entrevista === 'Outro responsavel' && v.entrevistador_nome) entrevistadorInfo = v.entrevistador_nome;
+            let divulgacaoInfo = v.vaga_divulgada || '';
+            if (v.vaga_divulgada === 'Sim' && v.onde_divulgada) divulgacaoInfo = v.onde_divulgada;
+
+            document.getElementById('vcExpandedDetails').innerHTML =
+                chipIf('Motivo da Vaga', v.motivo_vaga, 'fa-circle-question', true) +
+                chipIf('Desde quando é necessária', v.data_necessidade_desde ? formatDataBR(v.data_necessidade_desde) : null, 'fa-calendar-day') +
+                chipIf('Data Prevista de Abertura (Loja Nova)', v.data_prevista_abertura_loja ? formatDataBR(v.data_prevista_abertura_loja) : null, 'fa-store') +
+                chipIf('Turno', v.turno_trabalho, 'fa-sun') +
+                chipIf('Horário', v.horario_trabalho_detalhe, 'fa-clock') +
+                chipIf('Já Divulgada?', divulgacaoInfo, 'fa-bullhorn') +
+                chipIf('Validada com o GR?', v.validada_gr, 'fa-check-double') +
+                chipIf('Quem Entrevista', entrevistadorInfo, 'fa-user-group') +
+                chipIf('Encaminhar Candidatos Para', v.encaminhar_candidatos_para, 'fa-paper-plane', true) +
+                chipIf('Data de Admissão', v.data_admissao_candidato ? formatDataBR(v.data_admissao_candidato) : null, 'fa-id-badge') +
+                chipIf('Data de Fechamento', v.data_fechamento ? formatDataBR(v.data_fechamento) : null, 'fa-flag-checkered') +
+                chipIf('Justificativa do Status', v.justificativa_status, 'fa-note-sticky', true)
+                || '<p style="color:var(--text-muted); font-size:0.85rem;">Sem informações adicionais preenchidas.</p>';
+
+            vcExpanded = false;
+            document.getElementById('vcExpandedSection').style.display = 'none';
+            document.getElementById('vcExpandBtn').innerHTML = '<i class="fas fa-expand"></i>';
+
+            // Botão de anexo — só aparece quando a vaga está fechada e tem anexo salvo
+            const anexoWrap = document.getElementById('vcAnexoWrap');
+            if (status === 'Fechada' && v.mailto_anexo_url) {
+                anexoWrap.style.display = 'block';
+                anexoWrap.innerHTML = `<a href="${v.mailto_anexo_url}" target="_blank" class="btn btn-secondary" style="width:100%; padding:12px;"><i class="fas fa-paperclip"></i> Acessar Anexo</a>`;
+            } else {
+                anexoWrap.style.display = 'none';
+                anexoWrap.innerHTML = '';
+            }
+
+            renderVcActionButtons(status);
+            carregarHistoricoTransferencias(v.id);
+            document.getElementById('vagaCardModal').classList.add('active');
+        }
+
+        let vcExpanded = false;
+        function toggleVcExpand() {
+            vcExpanded = !vcExpanded;
+            document.getElementById('vcExpandedSection').style.display = vcExpanded ? 'block' : 'none';
+            document.getElementById('vcExpandBtn').innerHTML = vcExpanded ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>';
+        }
+
+        async function carregarHistoricoTransferencias(vagaId) {
+            const wrap = document.getElementById('vcHistoricoWrap');
+            const list = document.getElementById('vcHistoricoList');
+            wrap.style.display = 'none';
+            try {
+                const res = await fetch(`${SUPABASE_URL}/historico_transferencias_vaga?vaga_id=eq.${vagaId}&order=data_transferencia.desc`, { headers });
+                const rows = await res.json();
+                if (!Array.isArray(rows) || rows.length === 0) return;
+                list.innerHTML = rows.map(r => `
+                    <div style="font-size:0.78rem; color:var(--text-muted); background:var(--bg-base); border:1px solid var(--border-color); border-radius:8px; padding:8px 10px;">
+                        <b style="color:var(--text-main);">${r.recrutadora_anterior}</b> → <b style="color:var(--text-main);">${r.recrutadora_nova}</b>
+                        <span style="display:block; margin-top:2px;">SLA acumulado até a transferência: ${r.sla_acumulado_anterior}d · ${formatDataBR(r.data_transferencia.split('T')[0])}</span>
+                    </div>`).join('');
+                wrap.style.display = 'block';
+            } catch(e) { console.error('Erro ao carregar histórico de transferências', e); }
+        }
+
+        // Renderiza os mesmos botões de ação de status usados no modal de Ações (openActionModal),
+        // mas aqui dentro do card — clicar neles abre o modal de Ações já na etapa certa.
+        function renderVcActionButtons(status) {
+            const c = document.getElementById('vcActionButtons');
+            c.innerHTML = '';
+            if (status === 'Aberta' || !status) {
+                c.innerHTML += `<button class="btn btn-primary" style="padding:14px;" onclick="handoffCardAction('FECHAR')"><i class="fas fa-check-circle"></i> Fechar Vaga / Add Admissão</button>`;
+                c.innerHTML += `<button class="btn btn-warning" style="padding:14px;" onclick="handoffCardAction('STANDBY_IN')"><i class="fas fa-pause"></i> Iniciar Stand-by</button>`;
+                c.innerHTML += `<button class="btn btn-danger" style="padding:14px;" onclick="handoffCardAction('CANCELAR')"><i class="fas fa-times-circle"></i> Cancelar Vaga</button>`;
+            } else if (status === 'Stand-by') {
+                c.innerHTML += `<button class="btn btn-primary" style="padding:14px;" onclick="handoffCardQuickStatus('Aberta')"><i class="fas fa-play"></i> Encerrar Stand-by</button>`;
+                c.innerHTML += `<button class="btn btn-danger" style="padding:14px;" onclick="handoffCardAction('CANCELAR')"><i class="fas fa-times-circle"></i> Cancelar Vaga</button>`;
+            } else if (status === 'Cancelada') {
+                c.innerHTML += `<button class="btn btn-primary" style="padding:14px;" onclick="handoffCardQuickStatus('Aberta')"><i class="fas fa-undo"></i> Reverter Cancelamento</button>`;
+            } else if (status === 'Aguardando Admissão') {
+                c.innerHTML += `<button class="btn btn-primary" style="padding:14px;" onclick="handoffCardAction('CONCLUIR_ADM')"><i class="fas fa-check-double"></i> Concluir Fechamento</button>`;
+                c.innerHTML += `<button class="btn btn-warning" style="padding:14px;" onclick="handoffCardAction('DESISTENCIA')"><i class="fas fa-user-times"></i> Registrar Desistência</button>`;
+                c.innerHTML += `<button class="btn btn-danger" style="padding:14px;" onclick="handoffCardAction('CANCELAR')"><i class="fas fa-times-circle"></i> Cancelar Vaga</button>`;
+            } else {
+                c.innerHTML = `<div style="text-align:center; padding: 16px; background:rgba(0,0,0,0.02); border-radius:12px; color:var(--text-main);"><i class="fas fa-lock" style="color:var(--text-muted);"></i> Vaga finalizada (${status}).</div>`;
+            }
+        }
+
+        // Fecha o card e abre o formulário de ação já pronto (Fechar/Standby/Cancelar/etc.)
+        function handoffCardAction(actionType) {
+            const id = selectedVaga.id;
+            document.getElementById('vagaCardModal').classList.remove('active');
+            openActionModal(null, id);
+            setupActionForm(actionType);
+        }
+        // Idem, mas para ações diretas de 1 clique (sem formulário) como Encerrar Stand-by / Reverter Cancelamento
+        function handoffCardQuickStatus(newStatus) {
+            document.getElementById('vagaCardModal').classList.remove('active');
+            executeQuickStatus(newStatus);
+        }
+
+        async function processNotifications(isFirstLoad) {
+            if (!currentUser) return;
+
+            // 1. Carrega as notificações deste usuário já salvas no banco
+            try {
+                const res = await fetch(`${SUPABASE_URL}/tbl_notifications?usuario_destino_id=eq.${currentUser.id}&order=created_at.desc&limit=200`, { headers });
+                const dbRows = await res.json();
+                notifsHistory = Array.isArray(dbRows) ? dbRows : [];
+            } catch(e) { console.error('Erro ao carregar notificações', e); }
+
+            // ref_id identifica de forma única o evento de origem (id da vaga ou da mensagem de chat)
+            // e evita notificar a mesma coisa duas vezes.
+            const knownRefs = new Set(notifsHistory.map(n => n.ref_id).filter(Boolean));
+            const myData = getUserRawData();
+            const visibleIds = myData.map(v => v.id);
+            const newRows = [];
+
+            // 2. Notificação de Vaga Atribuível/Aberta
+            myData.forEach(v => {
+                if (v.status_vaga === 'Aberta' && !knownRefs.has(v.id)) {
+                    newRows.push({
+                        usuario_destino_id: currentUser.id, vaga_id: v.id, ref_id: v.id,
+                        tipo_notificacao: 'vaga_aberta', mensagem: `Nova vaga visível: ${v.cargo_vaga_setor}`, lida: false
+                    });
+                    knownRefs.add(v.id);
+                }
+            });
+
+            // 3. Notificação de Chat Ativo
+            if (visibleIds.length > 0) {
+                try {
+                    const chatRes = await fetch(`${SUPABASE_URL}/chat_vagas?order=created_at.desc&limit=50`, {headers});
+                    const recentChats = await chatRes.json();
+                    recentChats.forEach(c => {
+                        if (c.usuario !== currentUser.usuario && visibleIds.includes(c.id_vaga) && !knownRefs.has(c.id)) {
+                            const vaga = myData.find(v => v.id === c.id_vaga);
+                            newRows.push({
+                                usuario_destino_id: currentUser.id, vaga_id: c.id_vaga, ref_id: c.id,
+                                tipo_notificacao: 'chat', mensagem: `💬 Nova mensagem de ${c.usuario} (Vaga: ${vaga?.cargo_vaga_setor || '-'})`, lida: false
+                            });
+                            knownRefs.add(c.id);
+                        }
+                    });
+                } catch(e) { console.error("Erro no chat sync"); }
+            }
+
+            // 4. Grava as notificações novas no banco (e já injeta na lista local)
+            if (newRows.length > 0) {
+                try {
+                    const insertRes = await fetch(`${SUPABASE_URL}/tbl_notifications`, { method: 'POST', headers, body: JSON.stringify(newRows) });
+                    const inserted = await insertRes.json().catch(() => []);
+                    if (Array.isArray(inserted) && inserted.length > 0) notifsHistory = [...inserted, ...notifsHistory];
+                } catch(e) { console.error('Erro ao gravar notificações novas', e); }
+            }
+
+            renderNotifs();
+        }
+
+        function renderNotifs() {
+            const badge = document.getElementById('notifBadge'); const list = document.getElementById('notifList'); const unreadCount = notifsHistory.filter(n => !n.lida).length;
+            if(unreadCount > 0) { badge.style.display = 'block'; badge.innerText = unreadCount; } else { badge.style.display = 'none'; }
+            list.innerHTML = '';
+            if(notifsHistory.length === 0) list.innerHTML = '<div class="notif-item" style="justify-content:center;">Sem histórico.</div>';
+            notifsHistory.forEach((n) => { list.innerHTML += `<div class="notif-item ${n.lida?'':'unread'}" onclick="clickNotif('${n.id}', '${n.vaga_id}')"><i class="${n.tipo_notificacao==='chat'?'fas fa-comments':'fas fa-briefcase'}" style="color:var(--primary);"></i> ${n.mensagem}</div>`; });
+        }
+        function toggleNotifications() { document.getElementById('notifDropdown').classList.toggle('active'); }
+
+        async function clickNotif(notifId, vagaId) {
+            const notif = notifsHistory.find(n => n.id === notifId);
+            const isChat = notif && notif.tipo_notificacao === 'chat';
+            if (notif) notif.lida = true;
+            renderNotifs(); document.getElementById('notifDropdown').classList.remove('active'); clearAllFilters(); setTabFilter('todas');
+            try { await patchSupabase('tbl_notifications', `id=eq.${notifId}`, { lida: true }); }
+            catch(e) { console.error('Erro ao marcar notificação como lida', e); }
+            setTimeout(() => {
+                const tr = document.getElementById(`tr-${vagaId}`);
+                if(tr) { tr.scrollIntoView({behavior: 'smooth', block: 'center'}); tr.style.animation = 'highlightRow 2s'; }
+                if (isChat) openChat(null, vagaId);
+            }, 300);
+        }
+
+        async function clearNotifHistory() {
+            const ids = notifsHistory.map(n => n.id);
+            notifsHistory = [];
+            renderNotifs();
+            if (ids.length === 0) return;
+            try { await fetch(`${SUPABASE_URL}/tbl_notifications?id=in.(${ids.join(',')})`, { method: 'DELETE', headers }); }
+            catch(e) { console.error('Erro ao limpar notificações no banco', e); }
+        }
+
+        // Chat
+        async function openChat(e, id) {
+            if(e) e.stopPropagation();
+            selectedVaga = rawData.find(v => v.id == id); document.getElementById('chat-drawer').classList.add('open');
+            document.getElementById('chat-title-header').innerHTML = `<i class="fas fa-comments"></i> Chat: ${selectedVaga.cargo_vaga_setor}`; reloadChat();
+        }
+
+        async function reloadChat() {
+            const cont = document.getElementById('chat-messages-container');
+            try {
+                const res = await fetch(`${SUPABASE_URL}/chat_vagas?id_vaga=eq.${selectedVaga.id}&order=created_at.asc`, { headers }); const msgs = await res.json(); cont.innerHTML = '';
+                if(msgs.length === 0) cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); margin-top:20px;">Nenhuma mensagem.</p>';
+                msgs.forEach(m => {
+                    const isMe = m.usuario === currentUser.usuario; const d = new Date(m.created_at); const tStr = `${d.getDate()}/${d.getMonth()+1} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                    let reacts = m.reacoes || {}; let reactHtml = ''; ['👍', '❤️', '😂', '🔥'].forEach(em => { const c = reacts[em]||0; reactHtml += `<div class="reaction-btn" onclick="addReaction('${m.id}', '${em}')">${em} <span style="font-size:0.7rem;">${c>0?c:''}</span></div>`; });
+                    let textMsg = m.mensagem.replace(/@(\w+)/g, '<span class="mention">@$1</span>');
+                    
+                    // Exibir avatar oficial no chat baseando-se no allUsers atualizado
+                    const uInfo = allUsers.find(u => u.usuario === m.usuario); const defAv = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.usuario)}&background=0ea5e9&color=fff`;
+                    const avaUrl = uInfo && uInfo.avatar_url ? uInfo.avatar_url : defAv;
+
+                    cont.innerHTML += `
+                    <div class="chat-msg ${isMe?'my-msg':''}">
+                        <div class="chat-author" style="display:flex; align-items:center; gap:8px;">
+                            ${!isMe ? `<img src="${avaUrl}" style="width:20px; height:20px; border-radius:50%; object-fit:cover;">` : ''}
+                            <span>${m.usuario}</span> <span class="chat-date">${tStr}</span>
+                            ${isMe ? `<img src="${avaUrl}" style="width:20px; height:20px; border-radius:50%; object-fit:cover;">` : ''}
+                        </div>
+                        <div style="margin-top:5px;">${textMsg}</div>
+                        <div class="chat-reactions">${reactHtml}</div>
+                    </div>`;
+                });
+                cont.scrollTop = cont.scrollHeight;
+            } catch(e) { cont.innerHTML = '<p style="color:var(--danger); text-align:center;">Erro ao carregar chat.</p>'; }
+        }
+
+        function handleChatMentions(e) {
+            const input = e.target; const val = input.value; const drop = document.getElementById('mentionsDropdown');
+            if(e.key === 'Enter') { sendChatMessage(); drop.classList.remove('active'); return; }
+            const lastWord = val.split(' ').pop();
+            if(lastWord.startsWith('@')) {
+                const search = lastWord.substring(1).toLowerCase(); const matched = allUsers.filter(u => u.usuario.toLowerCase().includes(search));
+                if(matched.length > 0) { drop.innerHTML = ''; matched.forEach(m => { drop.innerHTML += `<div class="mention-item" onclick="insertMention('${m.usuario}')"><i class="fas fa-user-circle"></i> ${m.usuario}</div>`; }); drop.classList.add('active'); } else { drop.classList.remove('active'); }
+            } else { drop.classList.remove('active'); }
+        }
+        function insertMention(username) { const input = document.getElementById('chat-input'); const words = input.value.split(' '); words.pop(); input.value = words.join(' ') + (words.length > 0 ? ' ' : '') + `@${username} `; document.getElementById('mentionsDropdown').classList.remove('active'); input.focus(); }
+
+        async function sendChatMessage() {
+            const inp = document.getElementById('chat-input'); const msg = inp.value.trim(); if(!msg || !selectedVaga) return; inp.value = ''; document.getElementById('mentionsDropdown').classList.remove('active');
+            try { await fetch(`${SUPABASE_URL}/chat_vagas`, { method: 'POST', headers, body: JSON.stringify({ id_vaga: selectedVaga.id, usuario: currentUser.usuario, mensagem: msg }) }); reloadChat(); } catch(e) { showToast("Erro.",true); }
+        }
+
+        async function addReaction(msgId, emoji) {
+            try {
+                const res = await fetch(`${SUPABASE_URL}/chat_vagas?id=eq.${msgId}&select=reacoes`, { headers }); const data = await res.json(); let r = data[0].reacoes || {}; r[emoji] = (r[emoji] || 0) + 1;
+                await fetch(`${SUPABASE_URL}/chat_vagas?id=eq.${msgId}`, { method: 'PATCH', headers, body: JSON.stringify({ reacoes: r }) }); reloadChat();
+            } catch(e) {}
+        }
+
+        function openActionModal(e, id) {
+            if(e) e.stopPropagation();
+            selectedVaga = rawData.find(v => v.id == id); const st = selectedVaga.status_vaga;
+            const c = document.getElementById('action-buttons-container'); document.getElementById('action-form-container').style.display = 'none';
+            document.getElementById('actionModalTitle').innerHTML = `<i class="fas fa-bolt" style="color:var(--primary)"></i> Opções: ${selectedVaga.cargo_vaga_setor}`; c.innerHTML = '';
+
+            // Seção de Propriedade & Grupo (sempre visível, independente do status)
+            const semDono = !selectedVaga.recrutadora_responsavel || selectedVaga.recrutadora_responsavel.trim() === '';
+            const souDono = (selectedVaga.recrutadora_responsavel || '').toLowerCase() === (currentUser.usuario || '').toLowerCase();
+            let propHtml = `<div style="background:var(--bg-base); border:1px solid var(--border-color); border-radius:12px; padding:12px; margin-bottom:5px;">
+                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:8px;"><i class="fas fa-user-tag"></i> Propriedade ${selectedVaga.grupo_atribuido ? `· Grupo: ${selectedVaga.grupo_atribuido}` : '· Sem grupo (aberta a todos)'}</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">`;
+            if (semDono) {
+                propHtml += `<button class="btn btn-primary" style="padding:8px 14px; font-size:0.8rem;" onclick="assumirVaga('${selectedVaga.id}')"><i class="fas fa-hand-paper"></i> Assumir Vaga</button>`;
+            } else {
+                propHtml += `<button class="btn btn-secondary" style="padding:8px 14px; font-size:0.8rem;" onclick="openTransferModal('${selectedVaga.id}')"><i class="fas fa-exchange-alt"></i> Transferir</button>`;
+                if (!souDono && !isUserAdmin(currentUser)) {
+                    propHtml += `<button class="btn btn-secondary" style="padding:8px 14px; font-size:0.8rem;" onclick="bulkActionSingle('${selectedVaga.id}', 'propriedade')"><i class="fas fa-hand-paper"></i> Solicitar Propriedade</button>`;
+                }
+            }
+            propHtml += `<button class="btn btn-danger" style="padding:8px 14px; font-size:0.8rem;" onclick="bulkActionSingle('${selectedVaga.id}', 'exclusao')"><i class="fas fa-trash"></i> ${isUserAdmin(currentUser) ? 'Excluir' : 'Solicitar Exclusão'}</button>`;
+            propHtml += `</div></div><hr style="border:0; border-top:1px solid var(--border-color); margin: 12px 0;">`;
+            c.innerHTML += propHtml;
+
+            if (st === 'Aberta' || !st) {
+                c.innerHTML += `<button class="btn btn-primary" style="padding:15px; font-size:1rem;" onclick="setupActionForm('FECHAR')"><i class="fas fa-check-circle"></i> Fechar Vaga / Add Admissão</button>`;
+                c.innerHTML += `<button class="btn btn-warning" style="padding:15px; font-size:1rem;" onclick="setupActionForm('STANDBY_IN')"><i class="fas fa-pause"></i> Iniciar Stand-by</button>`;
+                c.innerHTML += `<button class="btn btn-danger" style="padding:15px; font-size:1rem;" onclick="setupActionForm('CANCELAR')"><i class="fas fa-times-circle"></i> Cancelar Vaga</button>`;
+            } 
+            else if (st === 'Stand-by') { c.innerHTML += `<button class="btn btn-primary" style="padding:15px;" onclick="executeQuickStatus('Aberta')"><i class="fas fa-play"></i> Encerrar Stand-by</button>`; c.innerHTML += `<button class="btn btn-danger" style="padding:15px;" onclick="setupActionForm('CANCELAR')"><i class="fas fa-times-circle"></i> Cancelar Vaga</button>`; }
+            else if (st === 'Cancelada') { c.innerHTML += `<button class="btn btn-primary" style="padding:15px;" onclick="executeQuickStatus('Aberta')"><i class="fas fa-undo"></i> Reverter Cancelamento</button>`; }
+            else if (st === 'Aguardando Admissão') { c.innerHTML += `<button class="btn btn-primary" style="padding:15px;" onclick="setupActionForm('CONCLUIR_ADM')"><i class="fas fa-check-double"></i> Concluir Fechamento</button>`; c.innerHTML += `<button class="btn btn-warning" style="padding:15px;" onclick="setupActionForm('DESISTENCIA')"><i class="fas fa-user-times"></i> Registrar Desistência</button>`; c.innerHTML += `<button class="btn btn-danger" style="padding:15px;" onclick="setupActionForm('CANCELAR')"><i class="fas fa-times-circle"></i> Cancelar Vaga</button>`; }
+            else if (st === 'Fechada' || st === 'Desistência') { c.innerHTML += `<div style="text-align:center; padding: 20px; background:rgba(0,0,0,0.02); border-radius:12px; color:var(--text-main);"><i class="fas fa-lock" style="font-size:2rem; color:var(--text-muted); margin-bottom:10px;"></i><br>Vaga finalizada (${st}).</div>`; }
+            document.getElementById('actionModal').classList.add('active');
+        }
+
+        // Versão de bulkAction pra uma única vaga (chamada a partir do modal de ações)
+        async function bulkActionSingle(id, tipo) {
+            selectedVagas = new Set([id]);
+            await bulkAction(tipo);
+            document.getElementById('actionModal').classList.remove('active');
+        }
+
+
+        async function executeQuickStatus(newStatus) { 
+            try {
+                await patchSupabase('vagas', `id=eq.${selectedVaga.id}`, { status_vaga: newStatus });
+
+                showToast("Atualizado!"); 
+                document.getElementById('actionModal').classList.remove('active'); 
+                loadVagas(false); 
+            } catch(e) { 
+                console.error("Supabase Error:", e);
+                showToast("Erro: " + e.message, true); 
+            } 
+        }
+
+        function setupActionForm(type) {
+            currentActionType = type; selectedFile = null; document.getElementById('action-buttons-container').innerHTML = ''; const form = document.getElementById('action-form-container'); form.style.display = 'block';
+            if (type === 'CANCELAR' || type === 'DESISTENCIA') { form.innerHTML = `<div class="form-group"><label>Justificativa Obrigatória</label><textarea id="inpJustificativa" rows="3"></textarea></div><button class="btn btn-danger" id="btnSubmitAction" onclick="submitActionForm()" style="width:100%; padding:15px;">Confirmar</button>`; } 
+            else if (type === 'STANDBY_IN') { form.innerHTML = `<div class="form-group"><label>Motivo do Stand-By</label><input type="text" id="inpJustificativa"></div><button class="btn btn-warning" id="btnSubmitAction" onclick="submitActionForm()" style="width:100%; padding:15px;">Pausar Vaga</button>`; }
+            else if (type === 'FECHAR' || type === 'CONCLUIR_ADM') {
+                form.innerHTML = `
+                <div class="form-group"><label>Nome do Candidato *</label><input type="text" id="inpCandidato" value="${selectedVaga.nome_candidato || ''}"></div>
+                <div class="form-group"><label>Anexo (Upload S3) *</label> ${selectedVaga.mailto_anexo_url ? `<p style="font-size:0.8rem; color:var(--success);"><i class="fas fa-check"></i> Já anexado</p>` : ''}<div class="file-upload-wrapper"><span id="fileNameDisplay"><i class="fas fa-upload"></i> Selecionar Arquivo</span><input type="file" id="inpMailtoFile" accept=".msg,.eml,.pdf,.jpg,.png" onchange="handleFileSelect(event)"></div></div>
+                <div class="grid-2-cols" style="background:rgba(0,0,0,0.02); padding:15px; border-radius:12px; margin-bottom:15px;">
+                    <div style="grid-column: 1 / -1;"><p style="font-size:0.8rem; color:var(--text-muted);">Preencha ambos para <b>Fechar</b>. Em branco = <b>Ag. Admissão</b>.</p></div>
+                    <div class="form-group" style="margin:0;"><label>Matrícula</label><input type="text" id="inpMatricula" value="${selectedVaga.matricula_candidato || ''}"></div>
+                    <div class="form-group" style="margin:0;"><label>Admissão (Data)</label><input type="date" id="inpDataAdm" value="${selectedVaga.data_admissao_candidato || ''}"></div>
+                </div>
+                <button class="btn btn-primary" id="btnSubmitAction" onclick="submitActionForm()" style="width:100%; padding:15px;">Salvar Operação</button>`;
+            }
+        }
+        function handleFileSelect(e) { const f = e.target.files[0]; if(f) { selectedFile = f; document.getElementById('fileNameDisplay').innerHTML = `<i class="fas fa-file"></i> ${f.name}`; } }
+
+        async function submitActionForm() {
+            let payload = {}; 
+            const btn = document.getElementById('btnSubmitAction'); 
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...'; 
+            btn.disabled = true;
+            
+            if (currentActionType === 'CANCELAR' || currentActionType === 'DESISTENCIA') {
+                const just = document.getElementById('inpJustificativa').value.trim(); 
+                if (!just) { showToast("Justificativa obrigatória", true); btn.innerHTML='Confirmar'; btn.disabled=false; return; }
+                payload = { status_vaga: currentActionType === 'CANCELAR' ? 'Cancelada' : 'Desistência', justificativa_status: just, data_fechamento: new Date().toISOString().split('T')[0] };
+            }
+            else if (currentActionType === 'STANDBY_IN') { 
+                payload = { status_vaga: 'Stand-by', justificativa_status: document.getElementById('inpJustificativa').value.trim() || null }; 
+            }
+            else if (currentActionType === 'FECHAR' || currentActionType === 'CONCLUIR_ADM') {
+                const cand = document.getElementById('inpCandidato').value.trim(); 
+                const mat = document.getElementById('inpMatricula').value.trim(); 
+                const dataAdm = document.getElementById('inpDataAdm').value;
+
+                if (!cand) { showToast("Candidato obrigatório", true); btn.innerHTML='Salvar Operação'; btn.disabled=false; return; }
+                if (!selectedFile && !selectedVaga.mailto_anexo_url) { showToast("Anexo obrigatório", true); btn.innerHTML='Salvar Operação'; btn.disabled=false; return; }
+
+                payload = { nome_candidato: cand };
+                
+                if(selectedFile) {
+                    try { 
+                        const safeName = selectedFile.name.replace(/[^a-zA-Z0-9.\-]/g, '_');
+                        const fName = `${selectedVaga.id}_${Date.now()}_${safeName}`; 
+                        
+                        await s3Client.putObject({ Bucket: 'anexos_sla', Key: fName, Body: selectedFile, ContentType: selectedFile.type || 'application/octet-stream' }).promise();
+                        payload.mailto_anexo_url = `https://ueicrehzfrwewgteqxvi.supabase.co/storage/v1/object/public/anexos_sla/${fName}`; 
+                    } catch(e) { 
+                        console.error(e); showToast("Erro upload anexo no S3.", true); btn.innerHTML='Salvar Operação'; btn.disabled=false; return; 
+                    }
+                }
+                
+                if (mat && dataAdm) { 
+                    payload.status_vaga = 'Fechada'; 
+                    payload.matricula_candidato = mat; 
+                    payload.data_admissao_candidato = dataAdm; 
+                    payload.data_fechamento = new Date().toISOString().split('T')[0]; 
+                } else { 
+                    payload.status_vaga = 'Aguardando Admissão'; 
+                    payload.matricula_candidato = mat || null;
+                    payload.data_admissao_candidato = dataAdm || null;
+                }
+            }
+            
+            try { 
+                await patchSupabase('vagas', `id=eq.${selectedVaga.id}`, payload); 
+
+                document.getElementById('actionModal').classList.remove('active'); 
+                showToast("Atualizado!"); 
+                
+                if(payload.status_vaga === 'Fechada' || payload.status_vaga === 'Cancelada' || payload.status_vaga === 'Desistência') { setTabFilter('fechadas'); } 
+                else { setTabFilter('ativas'); }
+                
+                loadVagas(false); 
+                if(payload.status_vaga === 'Fechada') { 
+                    document.getElementById('gamiEmoji').innerText = currentUser.emoji_vitoria || '🎉'; 
+                    document.getElementById('gamificationModal').classList.add('active'); 
+                    confetti({ particleCount: 200, spread: 90, zIndex: 4000 }); 
+                } 
+            } catch(e) { 
+                console.error(e);
+                showToast("Erro: " + e.message, true); 
+            } finally {
+                btn.innerHTML='Salvar Operação';
+                btn.disabled=false;
+            }
+        }
+
+        // --- DASHBOARDS & RELATÓRIOS (APLICADOS AO USERRAWDATA) ---
+        const DASH_FILTER_MAP = { dFiltroDir: 'diretor', dFiltroDistrital: 'distrital', dFiltroCoord: 'coordenador', dFiltroRec: 'recrutadora_responsavel', dFiltroStat: 'status_vaga' };
+
+        // Aplica todos os filtros do dashboard já selecionados, exceto o de excluirId —
+        // mesma lógica da tabela principal: cada dropdown reage aos outros, mas nunca
+        // se auto-restringe.
+        function getDashFilteredBase(excluirId) {
+            let dData = getUserRawData();
+            Object.keys(DASH_FILTER_MAP).forEach(selId => {
+                if (selId === excluirId) return;
+                const val = document.getElementById(selId).value;
+                if (val) dData = dData.filter(v => v[DASH_FILTER_MAP[selId]] === val);
+            });
+            const fData = document.getElementById('dFiltroData').value;
+            if (fData && excluirId !== 'dFiltroData') { dData = dData.filter(v => { const dt = v.data_abertura_vaga || v.data_solicitacao || ''; return dt.startsWith(fData); }); }
+            return dData;
+        }
+
+        function populateDashFilters() {
+            const getOpts = (selId, campo, label) => {
+                const atual = document.getElementById(selId).value;
+                const base = getDashFilteredBase(selId);
+                let opts = [...new Set(base.map(v => v[campo]).filter(Boolean))];
+                if (atual && !opts.includes(atual)) opts.push(atual); // não perde a seleção atual do ar
+                opts.sort();
+                return `<option value="">${label}</option>` + opts.map(a => `<option value="${a}" ${a === atual ? 'selected' : ''}>${a}</option>`).join('');
+            };
+            document.getElementById('dFiltroDir').innerHTML = getOpts('dFiltroDir', 'diretor', 'Diretor (Todos)');
+            document.getElementById('dFiltroDistrital').innerHTML = getOpts('dFiltroDistrital', 'distrital', 'Distrital (Todos)');
+            document.getElementById('dFiltroCoord').innerHTML = getOpts('dFiltroCoord', 'coordenador', 'Coordenador (Todos)');
+            document.getElementById('dFiltroRec').innerHTML = getOpts('dFiltroRec', 'recrutadora_responsavel', 'Recrutadora (Todas)');
+            document.getElementById('dFiltroStat').innerHTML = getOpts('dFiltroStat', 'status_vaga', 'Status (Todos)');
+        }
+
+        function openChartModal() { document.getElementById('chartModal').classList.add('active'); populateDashFilters(); updateDashboard(); }
+        
+        function updateDashboard() {
+            let dData = getDashFilteredBase(null); // todos os filtros aplicados juntos
+            document.getElementById('d-val-fechadas').innerText = dData.filter(v => v.status_vaga === 'Fechada').length;
+            document.getElementById('d-val-adm').innerText = dData.filter(v => v.status_vaga === 'Aguardando Admissão').length;
+            document.getElementById('d-val-pend').innerText = dData.filter(v => !['Fechada', 'Aguardando Admissão'].includes(v.status_vaga)).length;
+
+            const uniqueRecs = [...new Set(dData.map(v => v.recrutadora_responsavel).filter(Boolean))];
+            const groupBy = uniqueRecs.length > 1 ? 'recrutadora_responsavel' : 'nome_filial_setor';
+            document.getElementById('dashChartTitle').innerText = uniqueRecs.length > 1 ? 'SLA Médio por Recrutadora' : 'SLA Médio por Filial/Setor';
+
+            const recStats = {};
+            dData.forEach(v => { 
+                const key = v[groupBy] || 'Não Atribuído'; 
+                if(!recStats[key]) recStats[key] = { totalSla: 0, count: 0 }; 
+                recStats[key].totalSla += (v.current_sla || 0); recStats[key].count++; 
+            });
+
+            const labels = Object.keys(recStats);
+            const avgs = labels.map(l => (recStats[l].totalSla / recStats[l].count).toFixed(1));
+
+            const ctx = document.getElementById('recruiterChart').getContext('2d');
+            if(mainChart) mainChart.destroy();
+            
+            const textColor = getComputedStyle(document.body).getPropertyValue('--text-main').trim();
+            const chartColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#0ea5e9';
+            Chart.defaults.font.family = getComputedStyle(document.documentElement).getPropertyValue('--font-family');
+            
+            mainChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: labels, datasets: [ { label: 'SLA Médio (Dias)', data: avgs, backgroundColor: chartColor, borderRadius: 4 } ] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: textColor } } }, scales: { y: { display: false }, x: { grid: { display: false }, ticks: { color: textColor } } } } 
+            });
+        }
+
+        async function downloadDashboard(e) {
+            const btn = e.currentTarget; const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...'; btn.disabled = true;
+            const element = document.getElementById('dashExportArea');
+            try {
+                const canvas = await html2canvas(element, { backgroundColor: getComputedStyle(element).backgroundColor });
+                const link = document.createElement('a'); link.download = 'Dashboard_SLA.png'; link.href = canvas.toDataURL(); link.click();
+            } catch(err) { showToast("Erro ao exportar dashboard", true); }
+            btn.innerHTML = originalHTML; btn.disabled = false;
+        }
+
+        function openPerformanceSummary() {
+            document.getElementById('perfModal').classList.add('active');
+            renderPerfCards();
+        }
+
+        function toggleCustomPerfDate() {
+            const p = document.getElementById('perfPeriod').value;
+            if(p === 'custom') { document.getElementById('perfStart').style.display = 'block'; document.getElementById('perfEnd').style.display = 'block'; }
+            else { document.getElementById('perfStart').style.display = 'none'; document.getElementById('perfEnd').style.display = 'none'; renderPerfCards(); }
+        }
+
+        function renderPerfCards() {
+            const period = document.getElementById('perfPeriod').value;
+            let dData = getUserRawData(); 
+
+            const now = new Date();
+            if(period === 'mes_atual') {
+                const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+                dData = dData.filter(v => { const d = v.data_abertura_vaga || v.data_solicitacao || ''; return d.startsWith(ym); });
+            } else if(period === 'mes_passado') {
+                const past = new Date(now.getFullYear(), now.getMonth()-1, 1);
+                const ym = `${past.getFullYear()}-${String(past.getMonth()+1).padStart(2,'0')}`;
+                dData = dData.filter(v => { const d = v.data_abertura_vaga || v.data_solicitacao || ''; return d.startsWith(ym); });
+            } else if(period === 'ano') {
+                const y = `${now.getFullYear()}`;
+                dData = dData.filter(v => { const d = v.data_abertura_vaga || v.data_solicitacao || ''; return d.startsWith(y); });
+            } else if(period === 'custom') {
+                const start = document.getElementById('perfStart').value;
+                const end = document.getElementById('perfEnd').value;
+                if(start && end) { dData = dData.filter(v => { const d = v.data_abertura_vaga || v.data_solicitacao || ''; return d >= start && d <= end; }); }
+            }
+
+            const stats = {};
+            dData.forEach(v => {
+                const semDono = !v.recrutadora_responsavel || v.recrutadora_responsavel.trim() === '';
+                const rec = !semDono ? v.recrutadora_responsavel : (v.grupo_atribuido ? `Grupo: ${v.grupo_atribuido}` : 'Vaga Não Atribuída');
+                if(!stats[rec]) {
+                    stats[rec] = { total: 0, isGrupo: semDono, status: { 'Fechada':0, 'Aberta':0, 'Aguardando Admissão':0, 'Stand-by':0, 'Cancelada':0, 'Desistência':0 }, minSla: 9999, maxSla: 0, sumSla: 0 };
+                }
+                stats[rec].total++;
+                const st = v.status_vaga || 'Aberta';
+                if(stats[rec].status[st] !== undefined) stats[rec].status[st]++;
+                
+                const sla = v.current_sla || 0;
+                stats[rec].sumSla += sla;
+                if(sla < stats[rec].minSla) stats[rec].minSla = sla;
+                if(sla > stats[rec].maxSla) stats[rec].maxSla = sla;
+            });
+
+            const deck = document.getElementById('perfDeck');
+            deck.innerHTML = '';
+            
+            if(Object.keys(stats).length === 0) {
+                deck.innerHTML = '<p style="color:var(--text-muted); width:100%; text-align:center;">Nenhum dado encontrado para o período.</p>';
+                return;
+            }
+
+            for(let rec in stats) {
+                const s = stats[rec];
+                if(s.minSla === 9999) s.minSla = 0;
+                
+                const getPct = (val) => s.total > 0 ? ((val / s.total) * 100).toFixed(0) : 0;
+                const avgSla = s.total > 0 ? (s.sumSla / s.total).toFixed(1) : 0;
+                
+                // Usando a foto do cache atualizado
+                const uInfo = allUsers.find(u => u.usuario === rec);
+                const ava = uInfo && uInfo.avatar_url ? uInfo.avatar_url : `https://ui-avatars.com/api/?name=${encodeURIComponent(rec)}&background=random&color=fff&size=300&font-size=0.33`;
+
+                deck.innerHTML += `
+                    <div class="deck-card">
+                        <img class="deck-card-img" src="${ava}" alt="Foto ${rec}">
+                        <div class="deck-card-body">
+                            <div class="deck-card-dept">Recrutamento e Seleção</div>
+                            <div class="deck-card-name">${rec}</div>
+                            <div class="deck-card-role">Volumetria Operacional: ${s.total} Vagas</div>
+
+                            <div class="deck-card-status-list">
+                                <div class="deck-card-status-item">
+                                    <span>Fechadas</span> 
+                                    <b style="color:var(--success)">${s.status['Fechada']} (${getPct(s.status['Fechada'])}%)</b>
+                                </div>
+                                <div class="deck-card-status-item">
+                                    <span>Ag. Admissão</span> 
+                                    <b style="color:var(--st-admissao)">${s.status['Aguardando Admissão']} (${getPct(s.status['Aguardando Admissão'])}%)</b>
+                                </div>
+                                <div class="deck-card-status-item">
+                                    <span>Em Tratativa</span> 
+                                    <b style="color:var(--primary)">${s.status['Aberta']} (${getPct(s.status['Aberta'])}%)</b>
+                                </div>
+                                <div class="deck-card-status-item" style="border:none;">
+                                    <span>Perdas (Canc/Des.)</span> 
+                                    <b style="color:var(--danger)">${s.status['Cancelada'] + s.status['Desistência']} (${getPct(s.status['Cancelada'] + s.status['Desistência'])}%)</b>
+                                </div>
+                            </div>
+
+                            <div class="deck-card-slas">
+                                <div class="deck-sla-badge" style="color:var(--primary)">SLA Médio <b>${avgSla}d</b></div>
+                                <div class="deck-sla-badge" style="color:var(--success)">Mínimo <b>${s.minSla}d</b></div>
+                                <div class="deck-sla-badge" style="color:var(--danger)">Máximo <b>${s.maxSla}d</b></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // EXPORTAÇÕES
+        function openExportModal() { document.getElementById('exportModal').classList.add('active'); }
+
+        function exportRelatorioVagas(e) {
+            const btn = e.currentTarget; const originalHtml = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+            setTimeout(() => {
+                const dataToExport = filteredData.map(v => ({
+                    'ID': v.id, 'Status': v.status_vaga, 'SLA Atual (Dias)': v.current_sla, 'Meta SLA': v.meta_sla,
+                    'Recrutadora': v.recrutadora_responsavel, 'Data Abertura': formatDataBR(v.data_abertura_vaga || v.data_solicitacao),
+                    'Data Fechamento': formatDataBR(v.data_fechamento), 'Diretor': v.diretor, 'Distrital': v.distrital, 'Coordenador': v.coordenador,
+                    'Filial/Setor': v.nome_filial_setor, 'Cargo': v.cargo_vaga_setor, 'Solicitante': v.nome_solicitante,
+                    'Candidato': v.nome_candidato, 'Matrícula': v.matricula_candidato, 'Data Admissão': formatDataBR(v.data_admissao_candidato),
+                    'Currículos': v.curriculos
+                }));
+                const ws = XLSX.utils.json_to_sheet(dataToExport); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Relatório"); 
+                XLSX.writeFile(wb, `Relatorio_Vagas_${new Date().toISOString().split('T')[0]}.xlsx`); 
+                document.getElementById('exportModal').classList.remove('active'); btn.innerHTML = originalHtml; showToast("Exportado com sucesso!");
+            }, 500);
+        }
+
+        function exportDesempenho(e) {
+            const btn = e.currentTarget; const originalHtml = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+            setTimeout(() => {
+                const stats = {};
+                filteredData.forEach(v => {
+                    const rec = v.recrutadora_responsavel || 'Não Atribuído';
+                    if(!stats[rec]) stats[rec] = { 'Recrutadora': rec, 'Total Vagas':0, 'Fechadas':0, 'Abertas':0, 'Ag. Admissão':0, 'Canceladas/Desistências':0, 'SLA Somado':0 };
+                    stats[rec]['Total Vagas']++;
+                    const st = v.status_vaga || 'Aberta';
+                    if(st === 'Fechada') stats[rec]['Fechadas']++; else if(st === 'Aguardando Admissão') stats[rec]['Ag. Admissão']++; else if(st === 'Cancelada' || st === 'Desistência') stats[rec]['Canceladas/Desistências']++; else stats[rec]['Abertas']++;
+                    stats[rec]['SLA Somado'] += (v.current_sla || 0);
+                });
+                const dataToExport = Object.values(stats).map(s => { const total = s['Total Vagas']; return { 'Recrutadora': s['Recrutadora'], 'Total Vagas Visíveis': total, 'Fechadas': s['Fechadas'], 'Abertas (Pendentes)': s['Abertas'], 'Ag. Admissão': s['Ag. Admissão'], 'Canceladas/Desistências': s['Canceladas/Desistências'], 'Conversão (%)': total > 0 ? ((s['Fechadas']/total)*100).toFixed(1) + '%' : '0%', 'SLA Médio (Dias)': total > 0 ? (s['SLA Somado']/total).toFixed(1) : 0 }; });
+                const ws = XLSX.utils.json_to_sheet(dataToExport); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Desempenho"); 
+                XLSX.writeFile(wb, `Desempenho_Recrutadoras_${new Date().toISOString().split('T')[0]}.xlsx`); 
+                document.getElementById('exportModal').classList.remove('active'); btn.innerHTML = originalHtml; showToast("Exportado com sucesso!");
+            }, 500);
+        }
+
+        function exportOperacional(e) {
+            const btn = e.currentTarget; const originalHtml = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+            setTimeout(() => {
+                const stats = {};
+                filteredData.forEach(v => {
+                    const key = `${v.nome_filial_setor || 'N/A'} - ${v.cargo_vaga_setor || 'N/A'}`;
+                    if(!stats[key]) stats[key] = { 'Filial/Setor': v.nome_filial_setor, 'Cargo': v.cargo_vaga_setor, 'Volumetria':0, 'SLA Somado':0, 'Fechadas':0 };
+                    stats[key]['Volumetria']++; stats[key]['SLA Somado'] += (v.current_sla || 0);
+                    if(v.status_vaga === 'Fechada') stats[key]['Fechadas']++;
+                });
+                const dataToExport = Object.values(stats).map(s => ({ 'Filial / Setor': s['Filial/Setor'], 'Cargo': s['Cargo'], 'Volumetria Total': s['Volumetria'], 'Vagas Fechadas': s['Fechadas'], 'SLA Médio (Dias)': s['Volumetria'] > 0 ? (s['SLA Somado']/s['Volumetria']).toFixed(1) : 0 }));
+                const ws = XLSX.utils.json_to_sheet(dataToExport); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Operacional"); 
+                XLSX.writeFile(wb, `Resumo_Operacional_${new Date().toISOString().split('T')[0]}.xlsx`); 
+                document.getElementById('exportModal').classList.remove('active'); btn.innerHTML = originalHtml; showToast("Exportado com sucesso!");
+            }, 500);
+        }
+
+        function showToast(msg, isError = false) { const t = document.getElementById('toast'); t.innerHTML = `<i class="fas ${isError ? 'fa-times-circle' : 'fa-check-circle'}"></i> ${msg}`; t.className = isError ? 'error show' : 'show'; setTimeout(() => t.className = '', 4000); }
+    </script>
+</body>
+</html>
